@@ -1,0 +1,13 @@
+{
+  "name": "finalai-monorepo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k -n API,APP -c cyan,green \"npm run dev --prefix apps/api\" \"cmd /c cd /d apps\\finalai ^&^& flutter run --dart-define=AI_BASE_URL=%AI_BASE_URL% -d %FLUTTER_DEVICE_ID%\"",
+    "dev:android": "set AI_BASE_URL=http://192.168.1.103:3000&& set FLUTTER_DEVICE_ID=R5GYC3M08MM&& npm run dev",
+    "dev:android:usb": "\"C:\\Users\\Lenovo\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe\" reverse tcp:3000 tcp:3000 && set AI_BASE_URL=http://127.0.0.1:3000&& set FLUTTER_DEVICE_ID=R5GYC3M08MM&& npm run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1"
+  }
+}
