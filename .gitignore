@@ -4,3 +4,9 @@
 build/
 **/node_modules/
 **/.env
+
+# Secrets - ASLA commit etme
+**/app_secrets.dart
+**/env.json
+*.keystore
+*.jks
