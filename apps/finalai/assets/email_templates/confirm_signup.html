@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FinalAI - E-posta Dogrulama</title>
+</head>
+<body style="margin:0; padding:0; background-color:#0D1B2A; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#0D1B2A; padding:40px 0;">
+    <tr>
+      <td align="center">
+        <table width="420" cellpadding="0" cellspacing="0" style="background-color:#1A2E4A; border-radius:24px; border:3px solid #26A69A; overflow:hidden;">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#26A69A; padding:32px 24px; text-align:center;">
+              <div style="display:inline-block; width:72px; height:72px; background-color:#078F8D; border-radius:20px; border:3px solid rgba(255,255,255,0.3); line-height:72px; text-align:center; margin-bottom:12px;">
+                <span style="font-size:36px;">✉️</span>
+              </div>
+              <h1 style="color:#ffffff; font-weight:900; font-size:24px; margin:12px 0 4px;">Hos Geldin!</h1>
+              <p style="color:rgba(255,255,255,0.8); font-weight:600; font-size:14px; margin:0;">E-posta adresini dogrula</p>
+            </td>
+          </tr>
+          
+          <!-- Body -->
+          <tr>
+            <td style="padding:28px 24px;">
+              <p style="color:rgba(255,255,255,0.9); font-weight:600; font-size:15px; line-height:1.6; margin:0 0 20px;">
+                FinalAI ailesine katildigin icin cok mutluyuz! 🎮<br><br>
+                Hesabini aktiflestirmek icin asagidaki butona tikla ve ogrenme macerana basla.
+              </p>
+              
+              <!-- CTA Button -->
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center">
+                    <a href="{{ .ConfirmationURL }}" style="display:inline-block; background-color:#26A69A; color:#ffffff; font-weight:900; font-size:16px; text-decoration:none; padding:14px 32px; border-radius:14px; border:3px solid #078F8D; box-shadow:0 4px 0 #078F8D;">
+                      E-postami Dogrula
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              
+              <!-- Info section -->
+              <div style="background-color:rgba(79,195,247,0.1); border:2px solid rgba(79,195,247,0.3); border-radius:14px; padding:16px; margin-top:24px;">
+                <p style="color:rgba(255,255,255,0.7); font-weight:700; font-size:13px; margin:0 0 8px;">Seni neler bekliyor?</p>
+                <table cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="padding:4px 0;">
+                      <span style="display:inline-block; width:20px; height:20px; background-color:#4CAF50; border-radius:6px; text-align:center; line-height:20px; font-size:10px; color:white; margin-right:8px;">✓</span>
+                      <span style="color:rgba(255,255,255,0.7); font-weight:600; font-size:12px;">PDF'lerini yukle, AI ozet cikarsin</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:4px 0;">
+                      <span style="display:inline-block; width:20px; height:20px; background-color:#4FC3F7; border-radius:6px; text-align:center; line-height:20px; font-size:10px; color:white; margin-right:8px;">✓</span>
+                      <span style="color:rgba(255,255,255,0.7); font-weight:600; font-size:12px;">Kisisel ogrenme yolu olustur</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:4px 0;">
+                      <span style="display:inline-block; width:20px; height:20px; background-color:#FF9600; border-radius:6px; text-align:center; line-height:20px; font-size:10px; color:white; margin-right:8px;">✓</span>
+                      <span style="color:rgba(255,255,255,0.7); font-weight:600; font-size:12px;">Interaktif quizlerle ogren</span>
+                    </td>
+                  </tr>
+                </table>
+              </div>
+              
+              <p style="color:rgba(255,255,255,0.5); font-weight:600; font-size:11px; margin-top:20px; word-break:break-all;">
+                Buton calismiyorsa bu linki kopyalayip tarayiciniza yapistiriniz:<br>
+                <span style="color:#26A69A;">{{ .ConfirmationURL }}</span>
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="background-color:#0D1B2A; padding:20px 24px; border-top:2px solid rgba(38,166,154,0.2); text-align:center;">
+              <div style="margin-bottom:12px;">
+                <span style="display:inline-block; width:8px; height:8px; background-color:#26A69A; border-radius:2px; margin:0 3px;"></span>
+                <span style="display:inline-block; width:8px; height:8px; background-color:#4DB6AC; border-radius:2px; margin:0 3px;"></span>
+                <span style="display:inline-block; width:8px; height:8px; background-color:#80CBC4; border-radius:2px; margin:0 3px;"></span>
+              </div>
+              <p style="color:rgba(255,255,255,0.4); font-weight:600; font-size:11px; margin:0;">
+                FinalAI — Ogrenme maceranin yaninda 🎮
+              </p>
+              <p style="color:rgba(255,255,255,0.25); font-weight:500; font-size:10px; margin:8px 0 0;">
+                Bu e-posta otomatik olarak gonderilmistir.
+              </p>
+            </td>
+          </tr>
+          
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

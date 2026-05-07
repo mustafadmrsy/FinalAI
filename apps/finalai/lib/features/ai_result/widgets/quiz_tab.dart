@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/ui/app_assets.dart';
+import '../../../core/ui/widgets/app_svg_icon.dart';
 import '../providers/note_detail_provider.dart';
 
 class QuizTab extends ConsumerWidget {
@@ -30,7 +32,7 @@ class QuizTab extends ConsumerWidget {
             BaseCard(
               child: Row(
                 children: [
-                  const Icon(Icons.psychology_outlined, color: AppColors.primary),
+                  const AppSvgIcon(AppAssets.navQuiz, color: AppColors.primary),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Text(

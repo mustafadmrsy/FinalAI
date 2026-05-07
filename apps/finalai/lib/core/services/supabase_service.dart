@@ -4,4 +4,6 @@ class SupabaseService {
   SupabaseService._();
 
   static SupabaseClient get client => Supabase.instance.client;
+
+  static final authStateChanges = client.auth.onAuthStateChange.asBroadcastStream();
 }

@@ -7,6 +7,7 @@ import '../../../core/repositories/note_repository.dart';
 import '../../../core/repositories/stats_repository.dart';
 import '../../../core/repositories/repository_providers.dart';
 import '../../../core/services/storage_service.dart';
+import '../../notifications/services/notification_service.dart';
 
 enum UploadStatus { idle, uploading, processing, done, error }
 
@@ -154,6 +155,7 @@ class UploadNotifier extends StateNotifier<UploadViewState> {
       );
 
       final path = await _noteRepository.uploadTextAsFile(text, fileName);
+      try { await NotificationService.notifyPdfUploaded(fileName: fileName); } catch (_) {}
 
       state = state.copyWith(
         status: UploadStatus.processing,
@@ -182,6 +184,8 @@ class UploadNotifier extends StateNotifier<UploadViewState> {
       );
 
       await _onPdfUploaded();
+
+      try { await NotificationService.notifyPdfSummaryReady(fileName: fileName); } catch (_) {}
 
       state = state.copyWith(
         status: UploadStatus.done,
@@ -212,6 +216,7 @@ class UploadNotifier extends StateNotifier<UploadViewState> {
       );
 
       final path = await _noteRepository.uploadPdf(bytes, fileName);
+      try { await NotificationService.notifyPdfUploaded(fileName: fileName); } catch (_) {}
 
       state = state.copyWith(
         status: UploadStatus.processing,
@@ -252,6 +257,7 @@ class UploadNotifier extends StateNotifier<UploadViewState> {
       );
 
       await _onPdfUploaded();
+      try { await NotificationService.notifyPdfSummaryReady(fileName: fileName); } catch (_) {}
 
       state = state.copyWith(status: UploadStatus.done, message: '', resultId: id, progress: 1.0);
     } catch (e) {

@@ -6,6 +6,7 @@ export 'tokens/app_typography.dart';
 export 'tokens/app_spacing.dart';
 export 'tokens/app_radius.dart';
 export 'theme/app_theme.dart';
+export 'widgets/buttons/expressive_button.dart';
 export 'widgets/buttons/primary_button.dart';
 export 'widgets/buttons/ghost_button.dart';
 export 'widgets/cards/base_card.dart';

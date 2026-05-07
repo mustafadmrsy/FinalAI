@@ -174,10 +174,13 @@ class SummaryTab extends ConsumerWidget {
 
     if (sections.isEmpty) {
       return BaseCard(
-        child: Text(
-          longSummary,
-          style: AppTypography.bodyMedium.copyWith(color: AppColors.textPrimary),
-        ),
+        child: Builder(builder: (context) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          return Text(
+            longSummary,
+            style: AppTypography.bodyMedium.copyWith(color: isDark ? AppColors.textPrimary : AppColors.textPrimaryLight),
+          );
+        }),
       );
     }
 
@@ -352,13 +355,16 @@ class _ExpandableSectionState extends State<_ExpandableSection> {
             const Divider(height: 1),
             Padding(
               padding: const EdgeInsets.all(AppSpacing.md),
-              child: Text(
-                widget.content,
-                style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.textPrimary,
-                  height: 1.6,
-                ),
-              ),
+              child: Builder(builder: (context) {
+                final isDark = Theme.of(context).brightness == Brightness.dark;
+                return Text(
+                  widget.content,
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: isDark ? AppColors.textPrimary : AppColors.textPrimaryLight,
+                    height: 1.6,
+                  ),
+                );
+              }),
             ),
           ],
         ],

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../tokens/app_colors.dart';
+import 'package:flutter/services.dart';
 import '../../tokens/app_radius.dart';
 import '../../tokens/app_spacing.dart';
 
@@ -21,15 +21,19 @@ class BaseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final resolvedColor = color ?? theme.cardTheme.color ?? theme.colorScheme.surface;
+    final resolvedBorderColor = borderColor ?? theme.dividerColor;
+
     return GestureDetector(
-      onTap: onTap,
+      onTap: onTap != null ? () { HapticFeedback.lightImpact(); onTap!(); } : null,
       child: Container(
         padding: padding ?? const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
-          color: color ?? AppColors.surface,
+          color: resolvedColor,
           borderRadius: AppRadius.md,
           border: Border.all(
-            color: borderColor ?? AppColors.border,
+            color: resolvedBorderColor,
             width: 0.5,
           ),
         ),

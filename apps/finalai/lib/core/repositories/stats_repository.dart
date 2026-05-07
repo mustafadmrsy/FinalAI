@@ -58,7 +58,7 @@ class StatsRepository {
       final userId = _requireUserId();
       final res = await _client
           .from('user_profiles')
-          .select('id, full_name, avatar_url, is_premium, premium_until, daily_upload_count, last_upload_date')
+          .select('id, full_name, avatar_url, is_premium, premium_until, daily_upload_count, last_upload_date, learning_subject, learning_difficulty, onboarding_completed')
           .eq('id', userId)
           .maybeSingle();
 

@@ -1,7 +1,9 @@
-import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/ui/app_assets.dart';
+import '../../../core/ui/widgets/app_segmented_tab_bar.dart';
+import '../../../core/ui/widgets/app_svg_icon.dart';
 import '../../../core/services/pdf_export_service.dart';
 import '../providers/note_detail_provider.dart';
 import '../widgets/summary_tab.dart';
@@ -61,39 +63,59 @@ class _AiResultScreenState extends ConsumerState<AiResultScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final note = ref.watch(noteDetailProvider(widget.noteId));
+
     return DefaultTabController(
       length: 3,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Sonuç'),
-          actions: [
-            IconButton(
-              icon: _isExporting
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Icon(Icons.picture_as_pdf),
-              onPressed: _isExporting ? null : _exportPdf,
-              tooltip: 'PDF olarak indir',
+      child: Builder(
+        builder: (context) {
+          final controller = DefaultTabController.of(context);
+
+          final title = note.maybeWhen(
+            data: (data) => (data['subject'] as String?) ?? 'Sonuç',
+            orElse: () => 'Sonuç',
+          );
+
+          return Scaffold(
+            appBar: AppBar(
+              title: Text(title),
+              actions: [
+                IconButton(
+                  tooltip: 'PDF indir',
+                  onPressed: _isExporting ? null : _exportPdf,
+                  icon: _isExporting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const AppSvgIcon(AppAssets.actionDownload, color: Colors.white),
+                ),
+                IconButton(
+                  tooltip: 'Paylaş',
+                  onPressed: _isExporting ? null : _exportPdf,
+                  icon: const AppSvgIcon(AppAssets.actionShare, color: Colors.white),
+                ),
+                const SizedBox(width: 4),
+              ],
+              bottom: AppSegmentedTabBar(
+                controller: controller,
+                tabs: const [
+                  Tab(text: 'Özet'),
+                  Tab(text: 'Quiz'),
+                  Tab(text: 'Kartlar'),
+                ],
+              ),
             ),
-          ],
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: 'Özet'),
-              Tab(text: 'Quiz'),
-              Tab(text: 'Flashcard'),
-            ],
-          ),
-        ),
-        body: TabBarView(
-          children: [
-            SummaryTab(noteId: widget.noteId),
-            QuizTab(noteId: widget.noteId),
-            FlashcardTab(noteId: widget.noteId),
-          ],
-        ),
+            body: TabBarView(
+              children: [
+                SummaryTab(noteId: widget.noteId),
+                QuizTab(noteId: widget.noteId),
+                FlashcardTab(noteId: widget.noteId),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
