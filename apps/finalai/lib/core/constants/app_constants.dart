@@ -17,6 +17,6 @@ class AppConstants {
       String.fromEnvironment('GEMINI_MODEL', defaultValue: 'gemini-2.0-flash-lite');
 
   static const appName = 'FinalAI';
-  static const freeUploadLimit = 999;
+  static const freeUploadLimit = 3;
   static const premiumPrice = '₺69';
 }
