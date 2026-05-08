@@ -49,7 +49,7 @@ class _PlacementStepState extends State<PlacementStep> with TickerProviderStateM
 
   static const String _aiBaseUrl = String.fromEnvironment(
     'AI_BASE_URL',
-    defaultValue: 'http://10.0.2.2:3000',
+    defaultValue: 'https://finalai-zpza.onrender.com',
   );
 
   Future<void> _generateQuestions() async {

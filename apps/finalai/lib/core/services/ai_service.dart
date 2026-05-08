@@ -32,7 +32,7 @@ class AiService {
 
   static const String _baseUrl = String.fromEnvironment(
     'AI_BASE_URL',
-    defaultValue: 'http://10.0.2.2:3000',
+    defaultValue: 'https://finalai-zpza.onrender.com',
   );
 
   static Future<AiPdfResult> processPdfWithProgress(
