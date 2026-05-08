@@ -4,12 +4,13 @@ import 'task_helpers.dart';
 import '../../../../core/services/haptic_service.dart';
 
 class FillBlankTask extends StatefulWidget {
-  const FillBlankTask({super.key, required this.sentence, required this.answer, required this.options, required this.answered, required this.correct, this.onChanged});
+  const FillBlankTask({super.key, required this.sentence, required this.answer, required this.options, required this.answered, required this.correct, this.showCorrectAnswer = false, this.onChanged});
   final String sentence;
   final String answer;
   final List<String> options;
   final bool answered;
   final bool correct;
+  final bool showCorrectAnswer;
   final VoidCallback? onChanged;
   @override
   State<FillBlankTask> createState() => FillBlankTaskState();
@@ -107,7 +108,7 @@ class FillBlankTaskState extends State<FillBlankTask> {
       // Secenekler — suruklenebilir, kutusuz sadece kelime
       Wrap(spacing: 10, runSpacing: 10, children: widget.options.map((opt) {
         final sel = _selected == opt;
-        final isOk = widget.answered && opt == widget.answer;
+        final isOk = widget.showCorrectAnswer && opt == widget.answer;
         final isBad = widget.answered && sel && !widget.correct;
 
         Color chipColor, chipBorder;

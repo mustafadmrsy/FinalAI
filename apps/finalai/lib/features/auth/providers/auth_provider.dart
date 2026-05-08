@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/services/supabase_service.dart';
@@ -137,7 +138,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           ? null
           : (defaultTargetPlatform == TargetPlatform.android ||
                   defaultTargetPlatform == TargetPlatform.iOS
-              ? 'com.example.finalai://login-callback'
+              ? 'com.mustafadmrsy.finalai://login-callback'
               : null);
 
       await _client.auth.signInWithOAuth(
@@ -174,11 +175,27 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
 
       // Tum kullanici verilerini sil (tablodan)
+      await _client.from('quiz_sessions').delete().eq('user_id', userId);
       await _client.from('learning_lessons').delete().eq('user_id', userId);
       await _client.from('learning_units').delete().eq('user_id', userId);
       await _client.from('notes').delete().eq('user_id', userId);
       await _client.from('user_stats').delete().eq('user_id', userId);
       await _client.from('user_profiles').delete().eq('id', userId);
+      // Avatar verisini sil (profiles tablosu)
+      try { await _client.from('profiles').delete().eq('id', userId); } catch (_) {}
+      // Storage'daki PDF dosyalarini sil
+      try {
+        final files = await _client.storage.from('pdfs').list(path: userId);
+        if (files.isNotEmpty) {
+          final paths = files.map((f) => '$userId/${f.name}').toList();
+          await _client.storage.from('pdfs').remove(paths);
+        }
+      } catch (_) {}
+      // Yerel avatar cache temizle
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('avatar_data_$userId');
+      } catch (_) {}
 
       // Supabase auth hesabini sil (RPC fonksiyonu ile)
       try {

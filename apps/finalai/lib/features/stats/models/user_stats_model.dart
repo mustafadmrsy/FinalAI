@@ -26,6 +26,8 @@ class UserStatsModel {
     required this.dailyQuestCorrectGoal,
     required this.dailyQuestStreak,
     required this.dailyQuestsResetDate,
+    required this.aiTokens,
+    required this.pdfCredits,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -56,6 +58,8 @@ class UserStatsModel {
   final int dailyQuestCorrectGoal;
   final int dailyQuestStreak;
   final String? dailyQuestsResetDate;
+  final int aiTokens;
+  final int pdfCredits;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -87,6 +91,8 @@ class UserStatsModel {
       dailyQuestCorrectGoal: (map['daily_quest_correct_goal'] as num?)?.toInt() ?? 10,
       dailyQuestStreak: (map['daily_quest_streak'] as num?)?.toInt() ?? 0,
       dailyQuestsResetDate: map['daily_quests_reset_date'] as String?,
+      aiTokens: (map['ai_tokens'] as num?)?.toInt() ?? 5,
+      pdfCredits: (map['pdf_credits'] as num?)?.toInt() ?? 3,
       createdAt: map['created_at'] != null ? DateTime.parse(map['created_at'] as String) : null,
       updatedAt: map['updated_at'] != null ? DateTime.parse(map['updated_at'] as String) : null,
     );
@@ -120,6 +126,8 @@ class UserStatsModel {
       'daily_quest_correct_goal': dailyQuestCorrectGoal,
       'daily_quest_streak': dailyQuestStreak,
       'daily_quests_reset_date': dailyQuestsResetDate,
+      'ai_tokens': aiTokens,
+      'pdf_credits': pdfCredits,
       'created_at': createdAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
     };
@@ -152,6 +160,8 @@ class UserStatsModel {
     int? dailyQuestCorrectGoal,
     int? dailyQuestStreak,
     String? dailyQuestsResetDate,
+    int? aiTokens,
+    int? pdfCredits,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -182,6 +192,8 @@ class UserStatsModel {
       dailyQuestCorrectGoal: dailyQuestCorrectGoal ?? this.dailyQuestCorrectGoal,
       dailyQuestStreak: dailyQuestStreak ?? this.dailyQuestStreak,
       dailyQuestsResetDate: dailyQuestsResetDate ?? this.dailyQuestsResetDate,
+      aiTokens: aiTokens ?? this.aiTokens,
+      pdfCredits: pdfCredits ?? this.pdfCredits,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

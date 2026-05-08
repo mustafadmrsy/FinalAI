@@ -68,6 +68,8 @@ class UserStatsRepository {
       'daily_quest_correct': 0,
       'daily_quest_correct_goal': 10,
       'daily_quest_streak': 0,
+      'ai_tokens': 5,
+      'pdf_credits': 3,
     });
   }
 
@@ -105,6 +107,19 @@ class UserStatsRepository {
 
     await _client.from('user_stats').update({
       'energy': stats.energy - amount,
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('user_id', userId);
+  }
+
+  /// Add energy (combo reward)
+  Future<void> addEnergy({required int amount}) async {
+    final userId = _requireUserId();
+    final stats = await getUserStats();
+    if (stats == null) throw Exception('Stats not found');
+
+    final newEnergy = (stats.energy + amount).clamp(0, stats.energyMax + 10);
+    await _client.from('user_stats').update({
+      'energy': newEnergy,
       'updated_at': DateTime.now().toIso8601String(),
     }).eq('user_id', userId);
   }
@@ -291,6 +306,90 @@ class UserStatsRepository {
       'daily_quest_lessons': stats.dailyQuestLessons + lessons,
       'daily_quest_xp': stats.dailyQuestXp + xp,
       'daily_quest_correct': stats.dailyQuestCorrect + correct,
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('user_id', userId);
+  }
+
+  // ═══════════════════════════════════════════════════════
+  //  PREMIUM & PURCHASE LOGIC
+  // ═══════════════════════════════════════════════════════
+
+  /// Premium durumunu guncelle
+  Future<void> setPremium(bool value) async {
+    final userId = _requireUserId();
+    await _client.from('user_stats').update({
+      'is_premium': value,
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('user_id', userId);
+  }
+
+  // ═══════════════════════════════════════════════════════
+  //  AI TOKEN & PDF CREDIT LOGIC
+  // ═══════════════════════════════════════════════════════
+
+  /// AI token kullan (plan olusturma vs.)
+  Future<bool> useAiToken({int amount = 1}) async {
+    final userId = _requireUserId();
+    final stats = await getUserStats();
+    if (stats == null) return false;
+    if (stats.isPremium) return true; // Premium = sinirsiz
+    if (stats.aiTokens < amount) return false;
+
+    await _client.from('user_stats').update({
+      'ai_tokens': stats.aiTokens - amount,
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('user_id', userId);
+    return true;
+  }
+
+  /// PDF kredi kullan
+  Future<bool> usePdfCredit() async {
+    final userId = _requireUserId();
+    final stats = await getUserStats();
+    if (stats == null) return false;
+    if (stats.isPremium) return true; // Premium = sinirsiz
+    if (stats.pdfCredits <= 0) return false;
+
+    await _client.from('user_stats').update({
+      'pdf_credits': stats.pdfCredits - 1,
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('user_id', userId);
+    return true;
+  }
+
+  /// Reklam izleme odulu: +1 PDF kredi
+  Future<void> rewardPdfCredit() async {
+    final userId = _requireUserId();
+    final stats = await getUserStats();
+    if (stats == null) return;
+
+    await _client.from('user_stats').update({
+      'pdf_credits': stats.pdfCredits + 1,
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('user_id', userId);
+  }
+
+  /// Reklam izleme odulu: +2 AI token
+  Future<void> rewardAiTokens({int amount = 2}) async {
+    final userId = _requireUserId();
+    final stats = await getUserStats();
+    if (stats == null) return;
+
+    await _client.from('user_stats').update({
+      'ai_tokens': stats.aiTokens + amount,
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('user_id', userId);
+  }
+
+  /// Reklam izleme odulu: +3 enerji
+  Future<void> rewardEnergy({int amount = 3}) async {
+    final userId = _requireUserId();
+    final stats = await getUserStats();
+    if (stats == null) return;
+
+    final newEnergy = (stats.energy + amount).clamp(0, stats.energyMax + 10);
+    await _client.from('user_stats').update({
+      'energy': newEnergy,
       'updated_at': DateTime.now().toIso8601String(),
     }).eq('user_id', userId);
   }

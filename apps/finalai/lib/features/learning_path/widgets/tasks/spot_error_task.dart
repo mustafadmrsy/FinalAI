@@ -1,16 +1,19 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 import 'task_helpers.dart';
 import '../../../../core/services/haptic_service.dart';
 
 class SpotErrorTask extends StatefulWidget {
-  const SpotErrorTask({super.key, required this.sentence, required this.errorWord, required this.correction, required this.answered, required this.correct, this.showCorrectAnswer = false, this.onChanged});
+  const SpotErrorTask({super.key, required this.sentence, required this.errorWord, required this.correction, required this.answered, required this.correct, this.showCorrectAnswer = false, this.choices, this.onChanged});
   final String sentence;
   final String errorWord;
   final String correction;
   final bool answered;
   final bool correct;
   final bool showCorrectAnswer;
+  final List<String>? choices;
   final VoidCallback? onChanged;
   @override
   State<SpotErrorTask> createState() => SpotErrorTaskState();
@@ -18,6 +21,7 @@ class SpotErrorTask extends StatefulWidget {
 
 class SpotErrorTaskState extends State<SpotErrorTask> {
   String? _selected;
+  late List<String> _choices;
   bool get isReady => _selected != null;
 
   /// Normalize: strip punctuation, lowercase, trim
@@ -30,35 +34,39 @@ class SpotErrorTaskState extends State<SpotErrorTask> {
 
   void reset() { setState(() => _selected = null); widget.onChanged?.call(); }
 
-  /// Split sentence keeping multi-word errorWord as a single tappable token
-  List<String> _splitSentence() {
-    final sentence = widget.sentence;
-    final err = widget.errorWord.trim();
-
-    // Multi-word error: find it in sentence and keep as one token
-    if (err.contains(' ')) {
-      final lowerSentence = sentence.toLowerCase();
-      final lowerErr = err.toLowerCase();
-      final idx = lowerSentence.indexOf(lowerErr);
-      if (idx >= 0) {
-        final before = sentence.substring(0, idx).trim();
-        final errorInSentence = sentence.substring(idx, idx + err.length);
-        final after = sentence.substring(idx + err.length).trim();
-        final words = <String>[];
-        if (before.isNotEmpty) words.addAll(before.split(RegExp(r'\s+')));
-        words.add(errorInSentence);
-        if (after.isNotEmpty) words.addAll(after.split(RegExp(r'\s+')));
-        return words.where((w) => w.isNotEmpty).toList();
-      }
+  /// Build 4 choices: 1 error + 3 correct words from the sentence
+  List<String> _buildChoices() {
+    // Use AI-provided choices if available
+    if (widget.choices != null && widget.choices!.length >= 4) {
+      return List<String>.from(widget.choices!);
     }
+    // Auto-generate: pick 3 random non-error words + the error word
+    final words = widget.sentence.split(RegExp(r'\s+')).where((w) => w.isNotEmpty && _norm(w) != _norm(widget.errorWord)).toList();
+    words.shuffle(Random());
+    final picks = words.take(3).toList();
+    picks.add(widget.errorWord);
+    picks.shuffle(Random());
+    return picks;
+  }
 
-    return sentence.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+  @override
+  void initState() {
+    super.initState();
+    _choices = _buildChoices();
+  }
+
+  @override
+  void didUpdateWidget(covariant SpotErrorTask oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.sentence != widget.sentence || oldWidget.errorWord != widget.errorWord) {
+      _choices = _buildChoices();
+      _selected = null;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final px = Px.of(context);
-    final words = _splitSentence();
     final canReveal = widget.correct || widget.showCorrectAnswer;
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -69,51 +77,59 @@ class SpotErrorTaskState extends State<SpotErrorTask> {
         child: Row(children: [
           const Icon(Icons.find_replace_rounded, color: PxDecor.gold, size: 20),
           const SizedBox(width: 10),
-          Expanded(child: Text('Cumlede hatali kelimeye dokun', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: px.isDark ? PxDecor.gold : PxDecor.goldDark))),
+          Expanded(child: Text('Hatali kelimeyi bul', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: px.isDark ? PxDecor.gold : PxDecor.goldDark))),
         ]),
       ),
-      const SizedBox(height: 16),
+      const SizedBox(height: 12),
 
-      // Kelime kartlari
+      // Cumle — tam metin olarak goster
       Container(
         width: double.infinity,
         padding: const EdgeInsets.all(16),
-        decoration: px.cardDeco(depth: 4),
-        child: Wrap(spacing: 6, runSpacing: 8, children: words.map((w) {
-          final sel = _selected == w;
-          final isErr = widget.answered && _norm(w) == _norm(widget.errorWord);
-          final isBad = widget.answered && sel && _norm(w) != _norm(widget.errorWord);
+        decoration: px.cardDeco(depth: 3),
+        child: Text(widget.sentence, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: px.text, height: 1.5)),
+      ),
+      const SizedBox(height: 14),
 
-          BoxDecoration dec;
-          if (isErr && canReveal) {
-            dec = px.selectedDeco(color: PxDecor.green, depth: 2);
-          } else if (isBad) {
-            dec = px.wrongDeco(depth: 2);
-          } else if (sel) {
-            dec = px.selectedDeco(color: PxDecor.gold, depth: 2);
-          } else {
-            dec = px.cardDeco(depth: 2);
-          }
+      // 4 secenekli kutucuklar
+      ...List.generate(_choices.length, (i) {
+        final w = _choices[i];
+        final sel = _selected == w;
+        final isErr = widget.answered && _norm(w) == _norm(widget.errorWord);
+        final isBad = widget.answered && sel && _norm(w) != _norm(widget.errorWord);
 
-          return GestureDetector(
+        BoxDecoration dec;
+        if (isErr && canReveal) {
+          dec = px.correctDeco(depth: 3);
+        } else if (isBad) {
+          dec = px.wrongDeco(depth: 3);
+        } else if (sel) {
+          dec = px.selectedDeco(color: PxDecor.gold, depth: 3);
+        } else {
+          dec = px.cardDeco(depth: 3);
+        }
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: GestureDetector(
             onTap: widget.answered ? null : () { Haptic.selection(); setState(() => _selected = w); widget.onChanged?.call(); },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: dec,
               child: Text(w, style: TextStyle(
-                fontWeight: sel || (isErr && canReveal) || isBad ? FontWeight.w900 : FontWeight.w700, fontSize: 15,
+                fontWeight: sel || (isErr && canReveal) || isBad ? FontWeight.w900 : FontWeight.w700, fontSize: 16,
                 color: (isErr && canReveal) ? PxDecor.greenDark : isBad ? PxDecor.redDark : sel ? PxDecor.goldDark : px.text,
-                decoration: (isErr && canReveal) ? TextDecoration.lineThrough : null,
               )),
             ),
-          );
-        }).toList()),
-      ),
+          ),
+        );
+      }),
 
-      // Duzeltme bilgisi — sadece dogru cevap veya 2 yanlis sonrasi goster
+      // Duzeltme bilgisi
       if (widget.answered && canReveal) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: 4),
         Container(
           padding: const EdgeInsets.all(14),
           decoration: widget.correct ? px.correctDeco(depth: 3) : px.cardDeco(bg: px.accentBg(PxDecor.gold), borderColor: PxDecor.gold, depth: 3),

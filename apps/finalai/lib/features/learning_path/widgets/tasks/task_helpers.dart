@@ -219,6 +219,10 @@ class TaskMeta {
         return const TaskMeta(label: 'Hatayi Bul', icon: Icons.find_replace_rounded, color: PxDecor.gold, darkColor: PxDecor.goldDark);
       case 'image_select':
         return const TaskMeta(label: 'Resim Sec', icon: Icons.image_search_rounded, color: PxDecor.orange, darkColor: PxDecor.orangeDark);
+      case 'translate_sentence':
+        return const TaskMeta(label: 'Cevir', icon: Icons.translate_rounded, color: PxDecor.blue, darkColor: PxDecor.blueDark);
+      case 'speak_word':
+        return const TaskMeta(label: 'Soyle', icon: Icons.mic_rounded, color: PxDecor.purple, darkColor: PxDecor.purpleDark);
       default:
         return const TaskMeta(label: 'Gorev', icon: Icons.task_alt_rounded, color: PxDecor.teal, darkColor: PxDecor.tealDark);
     }

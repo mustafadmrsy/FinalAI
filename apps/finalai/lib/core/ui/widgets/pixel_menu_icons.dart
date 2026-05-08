@@ -168,6 +168,45 @@ class PixelMenuIcons {
     );
   }
 
+  /// Magaza — pixel alışveriş
+  static Widget shop({double size = 38}) {
+    return Container(
+      width: size, height: size,
+      decoration: BoxDecoration(
+        color: const Color(0xFF58CC02),
+        borderRadius: BorderRadius.circular(size * 0.28),
+        border: Border.all(color: const Color(0xFF3A8202), width: 1.5),
+        boxShadow: [BoxShadow(color: const Color(0xFF3A8202).withAlpha(80), offset: const Offset(0, 2.5), blurRadius: 0)],
+      ),
+      child: Stack(children: [
+        // Alışveriş çantası gövdesi
+        Positioned(
+          left: size * 0.22, bottom: size * 0.14,
+          child: Container(
+            width: size * 0.56, height: size * 0.44,
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(size * 0.08)),
+          ),
+        ),
+        // Çanta kulpu
+        Positioned(
+          left: size * 0.32, top: size * 0.12,
+          child: Container(
+            width: size * 0.36, height: size * 0.28,
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.white, width: size * 0.06),
+              borderRadius: BorderRadius.circular(size * 0.18),
+            ),
+          ),
+        ),
+        // Yıldız
+        Positioned(
+          right: size * 0.22, bottom: size * 0.22,
+          child: Icon(Icons.star_rounded, size: size * 0.22, color: const Color(0xFF3A8202)),
+        ),
+      ]),
+    );
+  }
+
   /// Cikis — pixel kapi
   static Widget signout({double size = 38}) {
     return Container(

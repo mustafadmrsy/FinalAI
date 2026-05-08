@@ -14,8 +14,14 @@ import '../providers/upload_provider.dart';
 import '../../learning_path/widgets/tasks/task_helpers.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../../core/ui/widgets/pixel_confirm_dialog.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../../stats/providers/user_stats_provider.dart';
+import '../../shop/widgets/quota_popup.dart';
 
 final _allNotesProvider = FutureProvider<List<NoteModel>>((ref) {
+  // Auth state'e bagimli — kullanici degisince yeniden ceker
+  final auth = ref.watch(authProvider);
+  if (auth.session == null) return <NoteModel>[];
   return ref.watch(noteRepositoryProvider).getRecentNotes(limit: 50);
 });
 
@@ -32,6 +38,16 @@ class PdfUploadScreen extends ConsumerStatefulWidget {
 
 class _PdfUploadScreenState extends ConsumerState<PdfUploadScreen> {
   final _subjectCtrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Her acilista belgeleri yeniden getir
+    Future.microtask(() {
+      ref.invalidate(_allNotesProvider);
+      ref.invalidate(recentNotesProvider);
+    });
+  }
 
   @override
   void dispose() {
@@ -353,11 +369,29 @@ class _PdfUploadScreenState extends ConsumerState<PdfUploadScreen> {
     else if (fileType == 'docx') await _pickAndUploadWord(context, notifier);
   }
 
+  Future<bool> _ensurePdfCredit(BuildContext context) async {
+    final stats = ref.read(userStatsProvider).valueOrNull;
+    if (stats != null && stats.isPremium) return true;
+    if (stats != null && stats.pdfCredits > 0) return true;
+    if (!context.mounted) return false;
+    final rewarded = await QuotaPopup.show(context, ref, type: QuotaType.pdfCredit);
+    ref.invalidate(userStatsProvider);
+    return rewarded;
+  }
+
+  Future<void> _deductPdfCredit() async {
+    final repo = ref.read(userStatsRepositoryProvider);
+    await repo.usePdfCredit();
+    ref.invalidate(userStatsProvider);
+  }
+
   Future<void> _pickAndUploadPdf(BuildContext context, UploadNotifier notifier) async {
+    if (!await _ensurePdfCredit(context)) return;
     final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: const ['pdf'], withData: false);
     final file = result?.files.single;
     if (file == null || file.path == null) return;
     try {
+      await _deductPdfCredit();
       final bytes = await File(file.path!).readAsBytes();
       await notifier.uploadPdf(bytes, file.name);
     } catch (e) {
@@ -366,6 +400,7 @@ class _PdfUploadScreenState extends ConsumerState<PdfUploadScreen> {
   }
 
   Future<void> _pickAndUploadWord(BuildContext context, UploadNotifier notifier) async {
+    if (!await _ensurePdfCredit(context)) return;
     final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: const ['docx'], withData: true);
     final file = result?.files.single;
     final bytes = file?.bytes;
@@ -373,6 +408,7 @@ class _PdfUploadScreenState extends ConsumerState<PdfUploadScreen> {
     try {
       final text = _extractTextFromDocx(bytes);
       if (text.isEmpty) { if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Word dosyasindan metin cikarilamadi'))); return; }
+      await _deductPdfCredit();
       await notifier.uploadWordAsText(text, file.name);
     } catch (e) {
       if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Word islenemedi: $e')));

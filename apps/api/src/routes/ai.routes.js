@@ -8,6 +8,35 @@ import { normalizeJsonText } from '../services/validation.service.js';
 
 const router = express.Router();
 
+/** Repair truncated JSON by closing all open brackets/braces in correct order. */
+function repairTruncatedJson(text) {
+  let clean = text;
+  // Check if we're inside an unclosed string
+  let inStr = false, escaped = false;
+  for (let i = 0; i < clean.length; i++) {
+    if (escaped) { escaped = false; continue; }
+    if (clean[i] === '\\') { escaped = true; continue; }
+    if (clean[i] === '"') inStr = !inStr;
+  }
+  if (inStr) clean += '"';
+  // Remove trailing comma, colon or incomplete key
+  clean = clean.replace(/[,:]\s*$/, '');
+  // Track bracket/brace stack
+  const stack = [];
+  inStr = false;
+  escaped = false;
+  for (let i = 0; i < clean.length; i++) {
+    if (escaped) { escaped = false; continue; }
+    if (clean[i] === '\\') { escaped = true; continue; }
+    if (clean[i] === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (clean[i] === '{') stack.push('}');
+    if (clean[i] === '[') stack.push(']');
+    if (clean[i] === '}' || clean[i] === ']') stack.pop();
+  }
+  return clean + stack.reverse().join('');
+}
+
 function sseWriteEvent(res, event, data) {
   try {
     if (res.writableEnded || res.destroyed) return;
@@ -308,7 +337,7 @@ router.post('/process-text', async (req, res) => {
 
     const modelCandidates = preferredModel
       ? [preferredModel]
-      : ['claude-3-5-sonnet-20241022', 'claude-3-5-sonnet-20240620', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307'];
+      : ['claude-sonnet-4-6', 'claude-opus-4-7', 'claude-sonnet-4-20250514', 'claude-haiku-4-5-20251001'];
 
     let msg;
     let usedModel;
@@ -420,6 +449,227 @@ router.post('/process-text', async (req, res) => {
       model: msg.model ?? 'unknown',
     });
   } catch (e) {
+    const status = e?.statusCode ?? 500;
+    res.status(status).json({ error: e?.message ?? String(e) });
+  }
+});
+
+// ── Learning Plan Generation ────────────────────────────────────────
+router.post('/generate-plan', async (req, res) => {
+  req.setTimeout(600000);
+  res.setTimeout(600000);
+
+  try {
+    const apiKey = requireEnv('ANTHROPIC_API_KEY');
+    const temperature = Number.parseFloat(process.env.AI_TEMPERATURE ?? '0.7');
+    const preferredModel = process.env.AI_MODEL;
+    // Plans are large — need high token limit (Turkish chars use more tokens)
+    const maxTokens = 32768;
+
+    const { prompt: userPrompt } = req.body ?? {};
+    if (!userPrompt || typeof userPrompt !== 'string') {
+      return res.status(400).json({ error: 'prompt is required' });
+    }
+
+    const client = new Anthropic({ apiKey });
+
+    const system =
+      'Sen FinalAI icin calisilan bir egitim planlayicisisin.\n' +
+      'CIKTI KURALI: SADECE gecerli JSON dondur. Markdown, aciklama, baslık, kod blogu, on/son metin YAZMA.\n' +
+      'Cıktı tek bir JSON objesi olacak: {"units": [...]}.\n' +
+      'Dil: Turkce.';
+
+    const modelCandidates = preferredModel
+      ? [preferredModel]
+      : ['claude-sonnet-4-6', 'claude-opus-4-7', 'claude-sonnet-4-20250514', 'claude-haiku-4-5-20251001'];
+
+    let msg;
+    let usedModel;
+    for (const modelId of modelCandidates) {
+      try {
+        msg = await client.messages.create({
+          model: modelId,
+          max_tokens: maxTokens,
+          temperature,
+          system,
+          messages: [{ role: 'user', content: userPrompt }],
+        });
+        usedModel = modelId;
+        break;
+      } catch (e) {
+        if (e?.status === 404) continue;
+        throw e;
+      }
+    }
+
+    if (!msg) {
+      return res.status(500).json({
+        error: `No available model found. Tried: ${modelCandidates.join(', ')}`,
+      });
+    }
+
+    const textContent = msg.content.find((c) => c.type === 'text');
+    let text = textContent?.text ?? '{}';
+
+    const normalized = normalizeJsonText(text);
+    let repaired;
+    try {
+      repaired = jsonrepair(normalized);
+    } catch {
+      repaired = normalized;
+    }
+
+    const stopReason = msg.stop_reason ?? 'unknown';
+
+    let parsed = null;
+    let jsonError = null;
+    try {
+      parsed = JSON.parse(repaired);
+    } catch (e) {
+      jsonError = e.message;
+      console.warn(
+        `[ai/generate-plan] JSON parse failed (stop=${stopReason}). Error: ${jsonError}. First 400 chars: ${normalized.slice(0, 400)}`
+      );
+    }
+
+    // If truncated (e.g. max_tokens hit), use smart repair
+    if (!parsed) {
+      try {
+        const smartRepaired = repairTruncatedJson(normalized);
+        parsed = JSON.parse(smartRepaired);
+        jsonError = null;
+        console.log(`[ai/generate-plan] Smart repair succeeded`);
+      } catch (e2) {
+        console.warn(`[ai/generate-plan] Smart repair also failed: ${e2.message}`);
+      }
+    }
+
+    console.log(
+      `[ai/generate-plan] model=${usedModel} stop=${stopReason} units=${parsed?.units?.length ?? 0} textLen=${text.length}`
+    );
+
+    res.json({
+      text,
+      json: parsed,
+      normalized,
+      repaired,
+      json_error: jsonError,
+      usage: msg.usage ?? null,
+      model: usedModel ?? 'unknown',
+    });
+  } catch (e) {
+    console.error('[ai/generate-plan] Error:', e?.message ?? e);
+    const status = Number(e?.status ?? e?.statusCode ?? 500);
+    const type = e?.error?.error?.type ?? e?.error?.type;
+    const isOverloaded = status === 529 || type === 'overloaded_error';
+    res.status(isOverloaded ? 503 : status).json({
+      error: isOverloaded ? 'anthropic_overloaded' : (e?.message ?? String(e)),
+      retryable: Boolean(isOverloaded),
+    });
+  }
+});
+
+// ── Placement Test Question Generation ────────────────────────────
+router.post('/placement-questions', async (req, res) => {
+  req.setTimeout(120000);
+  res.setTimeout(120000);
+
+  try {
+    const apiKey = requireEnv('ANTHROPIC_API_KEY');
+    const { subject, goal, dailyMinutes } = req.body ?? {};
+
+    if (!subject || typeof subject !== 'string') {
+      return res.status(400).json({ error: 'subject is required' });
+    }
+
+    const client = new Anthropic({ apiKey });
+
+    const seed = Date.now() % 100000;
+    const system =
+      'Sen bir eğitim uzmanısın. Seviye belirleme testi hazırlıyorsun.\n' +
+      'ÇIKTI KURALI: SADECE geçerli JSON dizisi döndür. Markdown, açıklama, kod bloğu YAZMA.\n' +
+      'Dil: Türkçe.';
+
+    const prompt =
+      `"${subject}" alanında seviye belirleme testi hazırla.\n` +
+      (goal ? `Öğrencinin hedefi: ${goal}.\n` : '') +
+      (dailyMinutes ? `Günlük çalışma süresi: ${dailyMinutes} dakika.\n` : '') +
+      `Rastgelelik tohumu: ${seed}\n\n` +
+      `GÖREV: "${subject}" konusunda TAM 8 adet çoktan seçmeli soru üret.\n\n` +
+      'ZORLUK DAĞILIMI (sırayla):\n' +
+      '- İlk 3 soru: "easy" — temel kavramlar, tanımlar, basit bilgi\n' +
+      '- Sonraki 3 soru: "medium" — uygulama, analiz, orta seviye problem\n' +
+      '- Son 2 soru: "hard" — ileri düzey, sentez, zor problem çözme\n\n' +
+      'KURALLAR:\n' +
+      `1) Her soru "${subject}" konusuna ÖZGÜ olmalı. Genel öğrenme teorisi sorusu SORMA.\n` +
+      '2) 4 seçenek olmalı. Doğru cevap her zaman farklı index\'te olsun (0-3 arası dengeli dağıt).\n' +
+      '3) Yanıltıcılar mantıklı olmalı — rastgele/saçma seçenek koyma.\n' +
+      '4) Soru metni açık, net ve Türkçe olmalı.\n' +
+      '5) Her soru birbirinden farklı alt konu/kavramı test etmeli.\n\n' +
+      'ÇIKTI: Sadece JSON dizisi döndür, başka hiçbir şey yazma.\n' +
+      '[\n' +
+      '  {"q": "soru metni", "options": ["A şıkkı", "B şıkkı", "C şıkkı", "D şıkkı"], "answer": 0, "difficulty": "easy"},\n' +
+      '  ...\n' +
+      ']\n\n' +
+      'TAM 8 soru üret. JSON dışında hiçbir şey yazma.';
+
+    const modelCandidates = [
+      'claude-sonnet-4-6',
+      'claude-opus-4-7',
+      'claude-sonnet-4-20250514',
+      'claude-haiku-4-5-20251001',
+      'claude-sonnet-4-5-20250929',
+    ];
+
+    let msg;
+    for (const modelId of modelCandidates) {
+      try {
+        msg = await client.messages.create({
+          model: modelId,
+          max_tokens: 4096,
+          temperature: 0.8,
+          system,
+          messages: [{ role: 'user', content: prompt }],
+        });
+        break;
+      } catch (e) {
+        if (e?.status === 404) continue;
+        throw e;
+      }
+    }
+
+    if (!msg) {
+      return res.status(500).json({ error: 'No available Claude model found.' });
+    }
+
+    const textContent = msg.content.find((c) => c.type === 'text');
+    let text = textContent?.text ?? '[]';
+
+    // Clean markdown wrappers
+    text = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      try {
+        parsed = JSON.parse(jsonrepair(text));
+      } catch {
+        return res.status(500).json({ error: 'JSON parse failed', raw: text });
+      }
+    }
+
+    if (!Array.isArray(parsed) || parsed.length < 4) {
+      return res.status(500).json({ error: 'Invalid questions array', raw: text });
+    }
+
+    res.json({
+      questions: parsed,
+      model: msg.model ?? 'unknown',
+      usage: msg.usage ?? null,
+    });
+  } catch (e) {
+    console.error('[ai/placement-questions] Error:', e?.message ?? e);
     const status = e?.statusCode ?? 500;
     res.status(status).json({ error: e?.message ?? String(e) });
   }

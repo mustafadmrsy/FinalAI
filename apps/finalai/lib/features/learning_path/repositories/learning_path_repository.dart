@@ -317,4 +317,21 @@ class LearningPathRepository {
           .eq('lesson_index', 1);
     }
   }
+
+  /// Regenerate the entire learning plan using AI.
+  /// Deletes existing lessons and units, then generates fresh ones.
+  Future<void> regeneratePlanWithAi() async {
+    final userId = _requireUserId();
+    final prefs = await _getUserLearningPrefs();
+
+    // Delete existing lessons and units
+    await _client.from('learning_lessons').delete().eq('user_id', userId);
+    await _client.from('learning_units').delete().eq('user_id', userId);
+
+    // Re-generate using AI (will fall back if AI fails)
+    await generateAndSaveInitialPlan(
+      subject: prefs.subject,
+      difficulty: prefs.difficulty,
+    );
+  }
 }

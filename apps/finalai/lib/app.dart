@@ -11,6 +11,7 @@ import 'features/notifications/providers/notification_provider.dart';
 import 'features/stats/providers/user_stats_provider.dart';
 import 'features/avatar/providers/avatar_provider.dart';
 import 'core/services/supabase_service.dart';
+import 'core/services/purchase_service.dart';
 
 class FinalAIApp extends ConsumerStatefulWidget {
   const FinalAIApp({super.key});
@@ -31,6 +32,8 @@ class _FinalAIAppState extends ConsumerState<FinalAIApp> with WidgetsBindingObse
     Haptic.init(hapticEnabled);
     // Auth degisikliginde avatar'i yenile
     _listenAuthChanges();
+    // Satin alma callback'lerini bagla
+    _connectPurchaseCallbacks();
   }
 
   @override
@@ -81,6 +84,25 @@ class _FinalAIAppState extends ConsumerState<FinalAIApp> with WidgetsBindingObse
     ref.read(notificationsProvider.notifier).refresh();
   }
 
+  void _connectPurchaseCallbacks() {
+    final purchase = PurchaseService.instance;
+    purchase.onSubscriptionPurchased = (productId) async {
+      try {
+        final repo = ref.read(userStatsRepositoryProvider);
+        await repo.setPremium(true);
+        ref.invalidate(userStatsProvider);
+      } catch (_) {}
+    };
+    purchase.onConsumablePurchased = (productId) async {
+      try {
+        final repo = ref.read(userStatsRepositoryProvider);
+        final tokens = ProductIds.tokensForProduct(productId);
+        if (tokens > 0) await repo.rewardAiTokens(amount: tokens);
+        ref.invalidate(userStatsProvider);
+      } catch (_) {}
+    };
+  }
+
   void _listenAuthChanges() {
     SupabaseService.authStateChanges.listen((data) {
       // Hesap degistiginde avatar'i yeni hesaba gore yenile
@@ -119,14 +141,14 @@ class FilteringRouteInformationProvider extends RouteInformationProvider with Ch
     return scheme.isNotEmpty &&
         scheme != 'http' &&
         scheme != 'https' &&
-        scheme != 'com.example.finalai';
+        scheme != 'com.mustafadmrsy.finalai';
   }
 
   @override
   RouteInformation get value {
     final v = _inner.value;
     final uri = v.uri;
-    if (uri.scheme == 'com.example.finalai') {
+    if (uri.scheme == 'com.mustafadmrsy.finalai') {
       return RouteInformation(
         uri: Uri(path: '/auth', query: uri.query, fragment: uri.fragment),
         state: v.state,
@@ -145,7 +167,7 @@ class FilteringRouteInformationProvider extends RouteInformationProvider with Ch
     RouteInformationReportingType type = RouteInformationReportingType.none,
   }) {
     final uri = routeInformation.uri;
-    if (uri.scheme == 'com.example.finalai') {
+    if (uri.scheme == 'com.mustafadmrsy.finalai') {
       _inner.routerReportsNewRouteInformation(
         RouteInformation(
           uri: Uri(path: '/auth', query: uri.query, fragment: uri.fragment),

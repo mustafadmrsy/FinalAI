@@ -64,6 +64,14 @@ dependencies:
   flutter_svg: ^2.0.10+1
   lottie: ^3.1.2
 
+  # Text-to-Speech & Speech Recognition
+  flutter_tts: ^4.0.2
+  speech_to_text: ^7.0.0
+
+  # Ads & Purchases
+  google_mobile_ads: ^5.1.0
+  in_app_purchase: ^3.2.0
+
   # Haptic & Notifications
   flutter_local_notifications: ^17.2.1+2
   flutter_timezone: ^3.0.1

@@ -8,6 +8,7 @@ import '../providers/learning_path_providers.dart';
 import '../../stats/providers/user_stats_provider.dart';
 import '../widgets/tasks/task_helpers.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../shop/widgets/quota_popup.dart';
 
 class UnitDetailScreen extends ConsumerWidget {
   const UnitDetailScreen({super.key, required this.unitIndex});
@@ -66,7 +67,15 @@ class UnitDetailScreen extends ConsumerWidget {
                         label: lesson.title,
                         progress: lesson.progress,
                         isLocked: lesson.isLocked,
-                        onTap: () => context.push('/path/unit/$unitIndex/lesson/${lesson.lessonIndex}'),
+                        onTap: () async {
+                          final stats = ref.read(userStatsProvider).valueOrNull;
+                          if (stats != null && stats.energy <= 0 && !stats.isPremium) {
+                            final rewarded = await QuotaPopup.show(context, ref, type: QuotaType.energy);
+                            ref.invalidate(userStatsProvider);
+                            if (!rewarded || !context.mounted) return;
+                          }
+                          if (context.mounted) context.push('/path/unit/$unitIndex/lesson/${lesson.lessonIndex}');
+                        },
                         accent: PxDecor.teal,
                       );
                     },

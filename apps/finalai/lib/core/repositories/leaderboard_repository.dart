@@ -75,6 +75,7 @@ class LeaderboardRepository {
   /// Fallback: separate queries when join fails
   Future<List<LeaderboardEntry>> _getLeaderboardFallback({String? subject, int limit = 50}) async {
     try {
+      // user_stats tablosundan tum kullanicilari cek
       final statsRes = await _client
           .from('user_stats')
           .select('user_id, xp_total, correct_answers, study_streak, combo_current, combo_best')
@@ -86,32 +87,38 @@ class LeaderboardRepository {
 
       final userIds = statsList.map((s) => s['user_id'] as String).toList();
 
-      var profileQuery = _client
-          .from('user_profiles')
-          .select('id, full_name, learning_subject')
-          .inFilter('id', userIds);
+      // Profile'lari toplu cek
+      Map<String, Map<String, dynamic>> profileMap = {};
+      try {
+        var profileQuery = _client
+            .from('user_profiles')
+            .select('id, full_name, learning_subject')
+            .inFilter('id', userIds);
 
-      if (subject != null && subject.isNotEmpty) {
-        profileQuery = profileQuery.eq('learning_subject', subject);
-      }
+        if (subject != null && subject.isNotEmpty) {
+          profileQuery = profileQuery.eq('learning_subject', subject);
+        }
 
-      final profilesRes = await profileQuery;
-      final profileMap = <String, Map<String, dynamic>>{};
-      for (final p in (profilesRes as List).cast<Map<String, dynamic>>()) {
-        profileMap[p['id'] as String] = p;
+        final profilesRes = await profileQuery;
+        for (final p in (profilesRes as List).cast<Map<String, dynamic>>()) {
+          profileMap[p['id'] as String] = p;
+        }
+      } catch (_) {
+        // Profile RLS engelliyorsa, en azindan stats'dan goster
       }
 
       final entries = <LeaderboardEntry>[];
       for (final s in statsList) {
         final uid = s['user_id'] as String;
         final profile = profileMap[uid];
-        if (profile == null) continue;
+        // Profile olmasa bile kullaniciyi goster
+        if (subject != null && subject.isNotEmpty && profile == null) continue;
 
         final xp = (s['xp_total'] as num?)?.toInt() ?? 0;
         entries.add(LeaderboardEntry(
           userId: uid,
-          name: (profile['full_name'] as String?) ?? 'Anonim',
-          subject: (profile['learning_subject'] as String?) ?? '',
+          name: (profile?['full_name'] as String?) ?? 'Kullanici ${uid.substring(0, 4)}',
+          subject: (profile?['learning_subject'] as String?) ?? '',
           xpTotal: xp,
           correctAnswers: (s['correct_answers'] as num?)?.toInt() ?? 0,
           studyStreak: (s['study_streak'] as num?)?.toInt() ?? 0,

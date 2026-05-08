@@ -31,6 +31,7 @@ import '../core/ui/widgets/pixel_menu_icons.dart';
 import '../core/ui/widgets/pixel_confirm_dialog.dart';
 import '../core/services/haptic_service.dart';
 import '../features/notifications/screens/notifications_screen.dart';
+import '../features/shop/screens/shop_screen.dart';
 import '../features/notifications/providers/notification_provider.dart';
 import '../core/ui/widgets/pixel_loading_screen.dart';
 
@@ -57,6 +58,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: '/auth', builder: (_, __) => const AuthScreen()),
+      GoRoute(
+        path: '/path/unit/:index/lesson/:lessonIndex',
+        builder: (_, state) => LessonScreen(
+          unitIndex: int.parse(state.pathParameters['index']!),
+          lessonIndex: int.parse(state.pathParameters['lessonIndex']!),
+        ),
+      ),
       ShellRoute(
         builder: (context, state, child) => OnboardingGate(child: MainShell(child: child)),
         routes: [
@@ -77,15 +85,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/path/unit/:index',
             builder: (_, state) => UnitDetailScreen(unitIndex: int.parse(state.pathParameters['index']!)),
           ),
-          GoRoute(
-            path: '/path/unit/:index/lesson/:lessonIndex',
-            builder: (_, state) => LessonScreen(
-              unitIndex: int.parse(state.pathParameters['index']!),
-              lessonIndex: int.parse(state.pathParameters['lessonIndex']!),
-            ),
-          ),
           GoRoute(path: '/stats', pageBuilder: (_, __) => _pxPage(const StatsScreen())),
           GoRoute(path: '/premium', pageBuilder: (_, __) => _pxPage(const PremiumScreen())),
+          GoRoute(path: '/shop', pageBuilder: (_, __) => _pxPage(const ShopScreen())),
           GoRoute(path: '/profile', pageBuilder: (_, __) => _pxPage(const ProfileScreen())),
           GoRoute(path: '/achievements', pageBuilder: (_, __) => _pxPage(const AchievementsScreen())),
         ],
@@ -157,6 +159,7 @@ class MainShell extends StatelessWidget {
     if (location.startsWith('/quiz')) return 3;
     if (location.startsWith('/achievements')) return 3;
     if (location.startsWith('/premium')) return 3;
+    if (location.startsWith('/shop')) return 3;
     return 0;
   }
 
@@ -317,6 +320,7 @@ class _ProfileMenuSheet extends ConsumerWidget {
         _buildPixelItem(context, ref, 'Istatistik', PixelMenuIcons.stats(), '/stats'),
         _buildPixelItem(context, ref, 'Quiz Coz', PixelMenuIcons.quiz(), '/quiz'),
         _buildPixelItem(context, ref, 'Basarimlar', PixelMenuIcons.achievements(), '/achievements'),
+        _buildPixelItem(context, ref, 'Magaza', PixelMenuIcons.shop(), '/shop'),
         _buildPixelItem(context, ref, 'Premium', PixelMenuIcons.premium(), '/premium'),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),

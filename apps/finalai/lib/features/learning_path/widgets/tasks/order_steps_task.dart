@@ -4,11 +4,12 @@ import 'task_helpers.dart';
 import '../../../../core/services/haptic_service.dart';
 
 class OrderStepsTask extends StatefulWidget {
-  const OrderStepsTask({super.key, required this.instruction, required this.steps, required this.correctOrder, required this.answered, this.onChanged});
+  const OrderStepsTask({super.key, required this.instruction, required this.steps, required this.correctOrder, required this.answered, this.showCorrectAnswer = false, this.onChanged});
   final String instruction;
   final List<String> steps;
   final List<int> correctOrder;
   final bool answered;
+  final bool showCorrectAnswer;
   final VoidCallback? onChanged;
   @override
   State<OrderStepsTask> createState() => OrderStepsTaskState();
@@ -103,10 +104,10 @@ class OrderStepsTaskState extends State<OrderStepsTask> {
           final stepIdx = _currentOrder[i];
           final stepText = widget.steps[stepIdx];
           final correctStepIdx = i < widget.correctOrder.length ? widget.correctOrder[i] : -1;
-          final ok = widget.answered && stepIdx == correctStepIdx;
+          final ok = widget.showCorrectAnswer && stepIdx == correctStepIdx;
           final bad = widget.answered && stepIdx != correctStepIdx;
 
-          final correctText = bad && i < widget.correctOrder.length ? widget.steps[widget.correctOrder[i]] : null;
+          final correctText = widget.showCorrectAnswer && bad && i < widget.correctOrder.length ? widget.steps[widget.correctOrder[i]] : null;
 
           final dec = ok ? px.correctDeco(depth: 3) : bad ? px.wrongDeco(depth: 3) : px.cardDeco(depth: 3);
           final badgeColor = ok ? PxDecor.green : bad ? PxDecor.red : PxDecor.blue;

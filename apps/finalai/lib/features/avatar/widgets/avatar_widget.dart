@@ -53,6 +53,9 @@ class _AvatarPainter extends CustomPainter {
     // ── Hair ──
     _drawHair(canvas, cx, s, hairColor, hairDark);
 
+    // ── Eyebrows ──
+    _drawEyebrows(canvas, cx, s);
+
     // ── Eyes ──
     _drawEyes(canvas, cx, s);
 
@@ -91,7 +94,7 @@ class _AvatarPainter extends CustomPainter {
     final paint = Paint()..color = color;
     final paintDark = Paint()..color = dark;
     final isFemale = av.gender == AvatarGender.female;
-    final style = av.hairStyle.clamp(0, 4);
+    final style = av.hairStyle.clamp(0, 7);
 
     if (!isFemale) {
       switch (style) {
@@ -128,6 +131,22 @@ class _AvatarPainter extends CustomPainter {
           canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 34 * s, 12 * s, 68 * s, 20 * s), Radius.circular(10 * s)), paintDark);
           canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 32 * s, 10 * s, 64 * s, 20 * s), Radius.circular(10 * s)), paint);
           break;
+        case 5: // Uzun (erkek)
+          canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 40 * s, 4 * s, 80 * s, 36 * s), Radius.circular(16 * s)), paintDark);
+          canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 38 * s, 2 * s, 76 * s, 36 * s), Radius.circular(16 * s)), paint);
+          canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 42 * s, 24 * s, 14 * s, 48 * s), Radius.circular(7 * s)), paint);
+          canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx + 28 * s, 24 * s, 14 * s, 48 * s), Radius.circular(7 * s)), paint);
+          break;
+        case 6: // Afro
+          canvas.drawCircle(Offset(cx, 20 * s), 42 * s, paintDark);
+          canvas.drawCircle(Offset(cx, 18 * s), 42 * s, paint);
+          break;
+        case 7: // Mohawk
+          canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 10 * s, -8 * s, 20 * s, 34 * s), Radius.circular(6 * s)), paintDark);
+          canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 8 * s, -10 * s, 16 * s, 34 * s), Radius.circular(6 * s)), paint);
+          // Fade sides
+          canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 34 * s, 16 * s, 68 * s, 12 * s), Radius.circular(6 * s)), Paint()..color = color.withAlpha(80));
+          break;
       }
     } else {
       switch (style) {
@@ -163,12 +182,80 @@ class _AvatarPainter extends CustomPainter {
           canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 44 * s, 20 * s, 16 * s, 56 * s), Radius.circular(8 * s)), paint);
           canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx + 28 * s, 20 * s, 16 * s, 56 * s), Radius.circular(8 * s)), paint);
           break;
+        case 5: // Pixie
+          canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 38 * s, 4 * s, 76 * s, 28 * s), Radius.circular(14 * s)), paintDark);
+          canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 36 * s, 2 * s, 72 * s, 28 * s), Radius.circular(14 * s)), paint);
+          // Side sweep
+          canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx + 18 * s, 8 * s, 20 * s, 18 * s), Radius.circular(8 * s)), paint);
+          break;
+        case 6: // Orgu
+          canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 40 * s, 4 * s, 80 * s, 32 * s), Radius.circular(16 * s)), paint);
+          // Two braids
+          canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 30 * s, 28 * s, 10 * s, 55 * s), Radius.circular(5 * s)), paint);
+          canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx + 20 * s, 28 * s, 10 * s, 55 * s), Radius.circular(5 * s)), paint);
+          // Braid ties
+          canvas.drawCircle(Offset(cx - 25 * s, 82 * s), 4 * s, Paint()..color = const Color(0xFFFF6B9D));
+          canvas.drawCircle(Offset(cx + 25 * s, 82 * s), 4 * s, Paint()..color = const Color(0xFFFF6B9D));
+          break;
+        case 7: // Kabarik (Curly big)
+          canvas.drawCircle(Offset(cx, 16 * s), 42 * s, paintDark);
+          canvas.drawCircle(Offset(cx, 14 * s), 42 * s, paint);
+          // Curly bumps
+          for (int i = -2; i <= 2; i++) {
+            canvas.drawCircle(Offset(cx + i * 14 * s, 4 * s), 12 * s, paint);
+          }
+          break;
       }
     }
   }
 
+  void _drawEyebrows(Canvas canvas, double cx, double s) {
+    final style = av.eyebrowStyle.clamp(0, 5);
+    final browColor = const Color(0xFF2C1810);
+    final lx = cx - 14 * s;
+    final rx = cx + 14 * s;
+    final by = 34 * s;
+
+    switch (style) {
+      case 0: // Normal
+        final p = Paint()..color = browColor..strokeWidth = 2.5 * s..strokeCap = StrokeCap.round;
+        canvas.drawLine(Offset(lx - 6 * s, by), Offset(lx + 6 * s, by), p);
+        canvas.drawLine(Offset(rx - 6 * s, by), Offset(rx + 6 * s, by), p);
+        break;
+      case 1: // Kalin
+        final p = Paint()..color = browColor..strokeWidth = 4 * s..strokeCap = StrokeCap.round;
+        canvas.drawLine(Offset(lx - 7 * s, by), Offset(lx + 7 * s, by), p);
+        canvas.drawLine(Offset(rx - 7 * s, by), Offset(rx + 7 * s, by), p);
+        break;
+      case 2: // Ince
+        final p = Paint()..color = browColor..strokeWidth = 1.5 * s..strokeCap = StrokeCap.round;
+        final lPath = Path()..moveTo(lx - 6 * s, by + 1 * s)..quadraticBezierTo(lx, by - 2 * s, lx + 6 * s, by + 1 * s);
+        final rPath = Path()..moveTo(rx - 6 * s, by + 1 * s)..quadraticBezierTo(rx, by - 2 * s, rx + 6 * s, by + 1 * s);
+        canvas.drawPath(lPath, p..style = PaintingStyle.stroke);
+        canvas.drawPath(rPath, p..style = PaintingStyle.stroke);
+        break;
+      case 3: // Yukari (arched)
+        final p = Paint()..color = browColor..strokeWidth = 2.5 * s..strokeCap = StrokeCap.round..style = PaintingStyle.stroke;
+        final lPath = Path()..moveTo(lx - 7 * s, by + 2 * s)..quadraticBezierTo(lx, by - 5 * s, lx + 7 * s, by);
+        final rPath = Path()..moveTo(rx - 7 * s, by)..quadraticBezierTo(rx, by - 5 * s, rx + 7 * s, by + 2 * s);
+        canvas.drawPath(lPath, p);
+        canvas.drawPath(rPath, p);
+        break;
+      case 4: // Kizgin (angled down)
+        final p = Paint()..color = browColor..strokeWidth = 3 * s..strokeCap = StrokeCap.round;
+        canvas.drawLine(Offset(lx - 6 * s, by - 2 * s), Offset(lx + 6 * s, by + 2 * s), p);
+        canvas.drawLine(Offset(rx - 6 * s, by + 2 * s), Offset(rx + 6 * s, by - 2 * s), p);
+        break;
+      case 5: // Yuvarlak
+        final p = Paint()..color = browColor..strokeWidth = 2.5 * s..strokeCap = StrokeCap.round..style = PaintingStyle.stroke;
+        canvas.drawArc(Rect.fromCenter(center: Offset(lx, by + 2 * s), width: 14 * s, height: 8 * s), 3.14, 3.14, false, p);
+        canvas.drawArc(Rect.fromCenter(center: Offset(rx, by + 2 * s), width: 14 * s, height: 8 * s), 3.14, 3.14, false, p);
+        break;
+    }
+  }
+
   void _drawEyes(Canvas canvas, double cx, double s) {
-    final style = av.eyeStyle.clamp(0, 4);
+    final style = av.eyeStyle.clamp(0, 7);
     final eyeWhite = Paint()..color = Colors.white;
     final eyeBlack = Paint()..color = const Color(0xFF2C1810);
     final lx = cx - 14 * s;
@@ -221,11 +308,53 @@ class _AvatarPainter extends CustomPainter {
         canvas.drawCircle(Offset(lx + 3 * s, ey - 2 * s), 2.5 * s, eyeWhite);
         canvas.drawCircle(Offset(rx + 3 * s, ey - 2 * s), 2.5 * s, eyeWhite);
         break;
+      case 5: // Uykulu
+        canvas.drawOval(Rect.fromCenter(center: Offset(lx, ey), width: 14 * s, height: 10 * s), eyeWhite);
+        canvas.drawOval(Rect.fromCenter(center: Offset(rx, ey), width: 14 * s, height: 10 * s), eyeWhite);
+        canvas.drawCircle(Offset(lx, ey + 1 * s), 4 * s, eyeBlack);
+        canvas.drawCircle(Offset(rx, ey + 1 * s), 4 * s, eyeBlack);
+        // Heavy eyelids
+        final lidPaint = Paint()..color = const Color(0xFF2C1810).withAlpha(60)..strokeWidth = 2.5 * s..style = PaintingStyle.stroke;
+        canvas.drawArc(Rect.fromCenter(center: Offset(lx, ey - 1 * s), width: 16 * s, height: 10 * s), 3.14, 3.14, false, lidPaint);
+        canvas.drawArc(Rect.fromCenter(center: Offset(rx, ey - 1 * s), width: 16 * s, height: 10 * s), 3.14, 3.14, false, lidPaint);
+        break;
+      case 6: // Kedi Goz
+        // Almond-shaped
+        final leftPath = Path()
+          ..moveTo(lx - 8 * s, ey)
+          ..quadraticBezierTo(lx, ey - 8 * s, lx + 9 * s, ey - 3 * s)
+          ..quadraticBezierTo(lx, ey + 6 * s, lx - 8 * s, ey);
+        final rightPath = Path()
+          ..moveTo(rx - 9 * s, ey - 3 * s)
+          ..quadraticBezierTo(rx, ey - 8 * s, rx + 8 * s, ey)
+          ..quadraticBezierTo(rx, ey + 6 * s, rx - 9 * s, ey - 3 * s);
+        canvas.drawPath(leftPath, eyeWhite);
+        canvas.drawPath(rightPath, eyeWhite);
+        canvas.drawCircle(Offset(lx, ey - 1 * s), 4 * s, Paint()..color = const Color(0xFF2E8B57));
+        canvas.drawCircle(Offset(rx, ey - 1 * s), 4 * s, Paint()..color = const Color(0xFF2E8B57));
+        canvas.drawCircle(Offset(lx, ey - 1 * s), 2 * s, eyeBlack);
+        canvas.drawCircle(Offset(rx, ey - 1 * s), 2 * s, eyeBlack);
+        break;
+      case 7: // Yildiz
+        canvas.drawOval(Rect.fromCenter(center: Offset(lx, ey), width: 16 * s, height: 16 * s), eyeWhite);
+        canvas.drawOval(Rect.fromCenter(center: Offset(rx, ey), width: 16 * s, height: 16 * s), eyeWhite);
+        // Star pupils
+        final starPaint = Paint()..color = const Color(0xFFFFC800);
+        for (final ox in [lx, rx]) {
+          for (int j = 0; j < 4; j++) {
+            final a = j * 3.14159 / 2;
+            final dx2 = cos(a) * 4 * s;
+            final dy2 = sin(a) * 4 * s;
+            canvas.drawLine(Offset(ox, ey), Offset(ox + dx2, ey + dy2), Paint()..color = starPaint.color..strokeWidth = 2 * s..strokeCap = StrokeCap.round);
+          }
+          canvas.drawCircle(Offset(ox, ey), 2.5 * s, eyeBlack);
+        }
+        break;
     }
   }
 
   void _drawMouth(Canvas canvas, double cx, double s) {
-    final style = av.mouthStyle.clamp(0, 4);
+    final style = av.mouthStyle.clamp(0, 7);
     final my = 64 * s;
     final mouthColor = const Color(0xFFD4625E);
 
@@ -257,11 +386,30 @@ class _AvatarPainter extends CustomPainter {
         // Teeth
         canvas.drawRect(Rect.fromLTWH(cx - 6 * s, my, 12 * s, 4 * s), Paint()..color = Colors.white);
         break;
+      case 5: // Dudak (full lips)
+        canvas.drawOval(Rect.fromCenter(center: Offset(cx, my + 2 * s), width: 16 * s, height: 8 * s), Paint()..color = const Color(0xFFE84070));
+        canvas.drawOval(Rect.fromCenter(center: Offset(cx, my + 4 * s), width: 12 * s, height: 5 * s), Paint()..color = const Color(0xFFCC3060));
+        break;
+      case 6: // Saskin (O mouth)
+        canvas.drawCircle(Offset(cx, my + 3 * s), 5 * s, Paint()..color = mouthColor);
+        canvas.drawCircle(Offset(cx, my + 3 * s), 3 * s, Paint()..color = const Color(0xFF8B2252));
+        break;
+      case 7: // Dis Gosterme
+        final path7 = Path()
+          ..moveTo(cx - 10 * s, my)
+          ..quadraticBezierTo(cx, my + 8 * s, cx + 10 * s, my);
+        canvas.drawPath(path7, Paint()..color = mouthColor..style = PaintingStyle.stroke..strokeWidth = 2.5 * s..strokeCap = StrokeCap.round);
+        // Individual teeth
+        final teethPaint = Paint()..color = Colors.white;
+        for (int i = -2; i <= 2; i++) {
+          canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx + i * 4 * s - 1.5 * s, my, 3 * s, 4 * s), Radius.circular(1 * s)), teethPaint);
+        }
+        break;
     }
   }
 
   void _drawOutfit(Canvas canvas, double cx, double s, Color color, Color dark) {
-    final style = av.outfit.clamp(0, 3);
+    final style = av.outfit.clamp(0, 7);
     final bodyY = 92 * s;
     final paint = Paint()..color = color;
     final paintDark = Paint()..color = dark;
@@ -331,6 +479,52 @@ class _AvatarPainter extends CustomPainter {
           canvas.drawLine(Offset(cx - 36 * s, y), Offset(cx + 36 * s, y), ribPaint);
         }
         break;
+      case 4: // Yelek
+        canvas.drawRRect(RRect.fromRectAndRadius(
+          Rect.fromCenter(center: Offset(cx, bodyY - 4 * s), width: 24 * s, height: 10 * s),
+          Radius.circular(5 * s),
+        ), paint);
+        // V-shape front opening
+        final vestInner = Paint()..color = Colors.white.withAlpha(60);
+        canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 6 * s, bodyY + 4 * s, 12 * s, 36 * s), Radius.circular(4 * s)), vestInner);
+        break;
+      case 5: // Ceket
+        canvas.drawRRect(RRect.fromRectAndRadius(
+          Rect.fromCenter(center: Offset(cx, bodyY - 6 * s), width: 28 * s, height: 12 * s),
+          Radius.circular(6 * s),
+        ), paint);
+        // Lapels
+        final lapelPaint = Paint()..color = dark;
+        canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 18 * s, bodyY - 4 * s, 14 * s, 20 * s), Radius.circular(4 * s)), lapelPaint);
+        canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx + 4 * s, bodyY - 4 * s, 14 * s, 20 * s), Radius.circular(4 * s)), lapelPaint);
+        // Center line
+        canvas.drawLine(Offset(cx, bodyY + 2 * s), Offset(cx, bodyY + 44 * s), Paint()..color = dark..strokeWidth = 2 * s);
+        break;
+      case 6: // Elbise
+        canvas.drawRRect(RRect.fromRectAndRadius(
+          Rect.fromCenter(center: Offset(cx, bodyY - 6 * s), width: 24 * s, height: 10 * s),
+          Radius.circular(5 * s),
+        ), paint);
+        // Flared bottom
+        final dressPath = Path()
+          ..moveTo(cx - 36 * s, bodyY + 16 * s)
+          ..lineTo(cx - 44 * s, bodyY + 54 * s)
+          ..lineTo(cx + 44 * s, bodyY + 54 * s)
+          ..lineTo(cx + 36 * s, bodyY + 16 * s)
+          ..close();
+        canvas.drawPath(dressPath, paint);
+        canvas.drawPath(dressPath, Paint()..color = dark..style = PaintingStyle.stroke..strokeWidth = 2 * s);
+        break;
+      case 7: // Tank Top
+        // No collar, wide neck
+        canvas.drawRRect(RRect.fromRectAndRadius(
+          Rect.fromCenter(center: Offset(cx, bodyY - 2 * s), width: 34 * s, height: 10 * s),
+          Radius.circular(5 * s),
+        ), Paint()..color = Colors.white.withAlpha(0)); // invisible neck area
+        // Shoulder straps
+        canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 30 * s, bodyY - 2 * s, 12 * s, 16 * s), Radius.circular(4 * s)), paint);
+        canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx + 18 * s, bodyY - 2 * s, 12 * s, 16 * s), Radius.circular(4 * s)), paint);
+        break;
     }
   }
 
@@ -352,20 +546,59 @@ class _AvatarPainter extends CustomPainter {
       case 3: // Kurdele
         final paint = Paint()..color = const Color(0xFFFF6B9D);
         canvas.drawCircle(Offset(cx + 24 * s, 12 * s), 8 * s, paint);
-        // Bow loops
         final path1 = Path()..moveTo(cx + 24 * s, 12 * s)..quadraticBezierTo(cx + 38 * s, 4 * s, cx + 32 * s, 14 * s);
         final path2 = Path()..moveTo(cx + 24 * s, 12 * s)..quadraticBezierTo(cx + 16 * s, 4 * s, cx + 20 * s, 14 * s);
         canvas.drawPath(path1, Paint()..color = paint.color..style = PaintingStyle.stroke..strokeWidth = 3 * s..strokeCap = StrokeCap.round);
         canvas.drawPath(path2, Paint()..color = paint.color..style = PaintingStyle.stroke..strokeWidth = 3 * s..strokeCap = StrokeCap.round);
         break;
       case 4: // Kulaklik
-        final paint = Paint()..color = const Color(0xFF3A3A3A)..style = PaintingStyle.stroke..strokeWidth = 3 * s;
+        final hpPaint = Paint()..color = const Color(0xFF3A3A3A)..style = PaintingStyle.stroke..strokeWidth = 3 * s;
         final arcRect = Rect.fromCenter(center: Offset(cx, 20 * s), width: 76 * s, height: 40 * s);
-        canvas.drawArc(arcRect, pi, pi, false, paint);
-        // Ear cups
+        canvas.drawArc(arcRect, pi, pi, false, hpPaint);
         final cupPaint = Paint()..color = const Color(0xFF3A3A3A);
         canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx - 38 * s, 40 * s), width: 14 * s, height: 18 * s), Radius.circular(4 * s)), cupPaint);
         canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx + 38 * s, 40 * s), width: 14 * s, height: 18 * s), Radius.circular(4 * s)), cupPaint);
+        break;
+      case 5: // Tac
+        final crownPaint = Paint()..color = const Color(0xFFFFC800);
+        final crownDark = Paint()..color = const Color(0xFFE5B400);
+        canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 28 * s, 2 * s, 56 * s, 14 * s), Radius.circular(4 * s)), crownDark);
+        canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 28 * s, 0, 56 * s, 14 * s), Radius.circular(4 * s)), crownPaint);
+        // Crown points
+        for (int i = -2; i <= 2; i++) {
+          final cp = Path()..moveTo(cx + i * 12 * s - 5 * s, 4 * s)..lineTo(cx + i * 12 * s, -8 * s)..lineTo(cx + i * 12 * s + 5 * s, 4 * s)..close();
+          canvas.drawPath(cp, crownPaint);
+        }
+        // Gems
+        canvas.drawCircle(Offset(cx, 6 * s), 3 * s, Paint()..color = const Color(0xFFFF4B4B));
+        canvas.drawCircle(Offset(cx - 14 * s, 6 * s), 2 * s, Paint()..color = const Color(0xFF1CB0F6));
+        canvas.drawCircle(Offset(cx + 14 * s, 6 * s), 2 * s, Paint()..color = const Color(0xFF58CC02));
+        break;
+      case 6: // Bandana
+        final bandPaint = Paint()..color = const Color(0xFFFF4B4B);
+        canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 38 * s, 12 * s, 76 * s, 10 * s), Radius.circular(3 * s)), bandPaint);
+        // Knot on side
+        canvas.drawCircle(Offset(cx + 36 * s, 18 * s), 6 * s, bandPaint);
+        // Trailing ends
+        canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx + 34 * s, 22 * s, 6 * s, 16 * s), Radius.circular(3 * s)), bandPaint);
+        canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx + 40 * s, 20 * s, 5 * s, 14 * s), Radius.circular(3 * s)), bandPaint);
+        break;
+      case 7: // Gunes Vizoru
+        final visorPaint = Paint()..color = const Color(0xFF1CB0F6);
+        canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 38 * s, 10 * s, 76 * s, 8 * s), Radius.circular(4 * s)), visorPaint);
+        // Visor brim
+        canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - 44 * s, 16 * s, 88 * s, 6 * s), Radius.circular(3 * s)), Paint()..color = const Color(0xFF0D8BD4));
+        break;
+      case 8: // Boncuk Kolye
+        final necklacePaint = Paint()..color = const Color(0xFFFFC800)..style = PaintingStyle.stroke..strokeWidth = 2 * s;
+        canvas.drawArc(Rect.fromCenter(center: Offset(cx, 80 * s), width: 40 * s, height: 20 * s), 0, pi, false, necklacePaint);
+        // Beads
+        for (int i = -3; i <= 3; i++) {
+          final bx = cx + i * 6 * s;
+          final by = 80 * s + (10 - (i.abs() * 2)) * s;
+          final colors = [const Color(0xFFFF4B4B), const Color(0xFF1CB0F6), const Color(0xFF58CC02), const Color(0xFFFFC800), const Color(0xFFCE82FF)];
+          canvas.drawCircle(Offset(bx, by), 2.5 * s, Paint()..color = colors[(i + 3) % colors.length]);
+        }
         break;
     }
   }

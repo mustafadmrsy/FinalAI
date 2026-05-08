@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../learning_path/widgets/tasks/task_helpers.dart';
 import '../../../core/services/haptic_service.dart';
+import '../../../core/services/purchase_service.dart';
 
 // ═══════════════════════════════════════════════════════════════
 //  PREMIUM SCREEN — 2D Pixel Game Art Style
@@ -116,7 +117,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
 
             // ── Restore ──
             Center(child: GestureDetector(
-              onTap: () { Haptic.light(); },
+              onTap: () { Haptic.light(); PurchaseService.instance.restorePurchases(); },
               child: Text('Satin alimi geri yukle', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: px.textMuted, decoration: TextDecoration.underline)),
             )),
             const SizedBox(height: 24),
@@ -260,14 +261,18 @@ class _PremiumScreenState extends State<PremiumScreen> {
     final prices = ['₺29.99/ay', '₺49.99/ay', '₺79.99/ay'];
 
     return GestureDetector(
-      onTap: () {
+      onTap: () async {
         Haptic.medium();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Odeme sistemi yakin zamanda aktif olacak!', style: const TextStyle(fontWeight: FontWeight.w700)),
-            backgroundColor: colors[_selectedTier],
-          ),
-        );
+        final productIds = [ProductIds.premiumSilver, ProductIds.premiumGold, ProductIds.premiumDiamond];
+        final ok = await PurchaseService.instance.buy(productIds[_selectedTier]);
+        if (!ok && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Satin alma baslatilamadi. Lutfen tekrar deneyin.', style: TextStyle(fontWeight: FontWeight.w700)),
+              backgroundColor: colors[_selectedTier],
+            ),
+          );
+        }
       },
       child: Container(
         width: double.infinity,

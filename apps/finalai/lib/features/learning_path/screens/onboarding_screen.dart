@@ -169,7 +169,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                       2 => PlacementStep(
                           key: const ValueKey('step2'),
                           subject: _subject ?? '',
+                          goal: _goal,
+                          dailyMinutes: _dailyMinutes,
                           onPlacementDone: _onPlacementDone,
+                          onGoBack: () => setState(() => _step = 1),
                         ),
                       _ => ConfirmPlanStep(
                           key: const ValueKey('step3'),

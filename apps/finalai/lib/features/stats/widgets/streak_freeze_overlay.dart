@@ -19,7 +19,7 @@ class StreakFreezeOverlay extends StatefulWidget {
       context: context,
       barrierDismissible: false,
       barrierColor: Colors.transparent,
-      transitionDuration: const Duration(milliseconds: 400),
+      transitionDuration: const Duration(milliseconds: 150),
       pageBuilder: (ctx, a1, a2) => StreakFreezeOverlay(
         type: type,
         streakCount: streakCount,
@@ -40,12 +40,12 @@ class _StreakFreezeOverlayState extends State<StreakFreezeOverlay> with TickerPr
   @override
   void initState() {
     super.initState();
-    _enterCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600))..forward();
+    _enterCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 300))..forward();
     _particleCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat();
-    _exitCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
+    _exitCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 250));
 
     if (widget.type == 'frozen') {
-      Future.delayed(const Duration(seconds: 3), () {
+      Future.delayed(const Duration(seconds: 2), () {
         if (mounted) {
           _exitCtrl.forward().then((_) {
             if (mounted) widget.onDismiss?.call();

@@ -7,6 +7,8 @@ import 'app.dart';
 import 'core/constants/app_secrets.dart';
 import 'core/services/haptic_service.dart';
 import 'features/notifications/services/notification_service.dart';
+import 'core/services/ad_reward_service.dart';
+import 'core/services/purchase_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,6 +30,12 @@ void main() async {
 
   // Bildirim servisini baslat
   await NotificationService.init();
+
+  // Reklam SDK'sini baslat
+  await AdRewardService.initialize();
+
+  // In-App Purchase baslat
+  await PurchaseService.instance.initialize();
 
   runApp(const ProviderScope(child: FinalAIApp()));
 }

@@ -4,11 +4,12 @@ import 'task_helpers.dart';
 import '../../../../core/services/haptic_service.dart';
 
 class TapSelectTask extends StatefulWidget {
-  const TapSelectTask({super.key, required this.question, required this.options, required this.correctIndex, required this.answered, this.onChanged});
+  const TapSelectTask({super.key, required this.question, required this.options, required this.correctIndex, required this.answered, this.showCorrectAnswer = false, this.onChanged});
   final String question;
   final List<String> options;
   final int correctIndex;
   final bool answered;
+  final bool showCorrectAnswer;
   final VoidCallback? onChanged;
   @override
   State<TapSelectTask> createState() => TapSelectTaskState();
@@ -44,7 +45,7 @@ class TapSelectTaskState extends State<TapSelectTask> {
       // Secenekler
       ...List.generate(widget.options.length, (i) {
         final sel = _selected == i;
-        final ok = widget.answered && i == widget.correctIndex;
+        final ok = widget.showCorrectAnswer && i == widget.correctIndex;
         final bad = widget.answered && sel && i != widget.correctIndex;
 
         final dec = ok ? px.correctDeco() : bad ? px.wrongDeco() : sel ? px.selectedDeco(color: PxDecor.green) : px.cardDeco();

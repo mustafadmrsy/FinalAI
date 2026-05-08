@@ -8,6 +8,8 @@ import '../constants/app_constants.dart';
 import '../constants/app_secrets.dart';
 
 class GeminiService {
+  static int get apiKeyLength => AppSecrets.geminiApiKey.length;
+
   static GenerativeModel _createModel() {
     return GenerativeModel(
       model: AppConstants.geminiModel,
@@ -112,6 +114,61 @@ Bu PDF'i analiz et ve aşağıdaki JSON formatında SADECE JSON döndür, başka
 
     final text = response.text ?? '{}';
     return _parseJson(text);
+  }
+
+  /// Generate placement test questions for a specific subject.
+  /// Returns a list of 8 questions (easy → medium → hard) as JSON.
+  static Future<List<Map<String, dynamic>>> generatePlacementQuestions({
+    required String subject,
+    String? goal,
+    int? dailyMinutes,
+  }) async {
+    if (AppSecrets.geminiApiKey.isEmpty) {
+      throw StateError('Missing GEMINI_API_KEY. Provide via --dart-define.');
+    }
+
+    final seed = DateTime.now().millisecondsSinceEpoch % 100000;
+    final prompt = '''
+Sen bir eğitim uzmanısın. "$subject" alanında seviye belirleme testi hazırlıyorsun.
+${goal != null ? 'Öğrencinin hedefi: $goal.' : ''}
+${dailyMinutes != null ? 'Günlük çalışma süresi: $dailyMinutes dakika.' : ''}
+Rastgelelik tohumu: $seed
+
+GÖREV: "$subject" konusunda TAM 8 adet çoktan seçmeli soru üret.
+
+ZORLUK DAĞILIMI (sırayla):
+- İlk 3 soru: "easy" — temel kavramlar, tanımlar, basit bilgi
+- Sonraki 3 soru: "medium" — uygulama, analiz, orta seviye problem
+- Son 2 soru: "hard" — ileri düzey, sentez, zor problem çözme
+
+KURALLAR:
+1) Her soru "$subject" konusuna ÖZGÜ olmalı. Genel öğrenme teorisi sorusu SORMA.
+2) 4 seçenek olmalı. Doğru cevap her zaman farklı index'te olsun (0-3 arası dengeli dağıt).
+3) Yanıltıcılar mantıklı olmalı — rastgele/saçma seçenek koyma.
+4) Soru metni açık, net ve Türkçe olmalı.
+5) Her soru birbirinden farklı alt konu/kavramı test etmeli.
+
+ÇIKTI: Sadece JSON dizisi döndür, başka hiçbir şey yazma.
+[
+  {"q": "soru metni", "options": ["A şıkkı", "B şıkkı", "C şıkkı", "D şıkkı"], "answer": 0, "difficulty": "easy"},
+  ...
+]
+
+TAM 8 soru üret. JSON dışında hiçbir şey yazma.
+''';
+
+    final response = await _generateWithFallback([Content.text(prompt)]);
+    final text = response.text ?? '[]';
+    final clean = text.replaceAll('```json', '').replaceAll('```', '').trim();
+
+    try {
+      final decoded = jsonDecode(clean);
+      if (decoded is List && decoded.length >= 4) {
+        return decoded.cast<Map<String, dynamic>>();
+      }
+    } catch (_) {}
+
+    throw Exception('AI placement question parse failed');
   }
 
   static Future<String> generateStudyPlan({

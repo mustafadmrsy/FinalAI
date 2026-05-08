@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -14,7 +13,6 @@ import '../../learning_path/widgets/tasks/task_helpers.dart';
 import '../../learning_path/data/onboarding_options.dart';
 import '../../../core/services/theme_service.dart';
 import '../../../core/services/haptic_service.dart';
-import '../../avatar/models/avatar_model.dart';
 import '../../avatar/widgets/avatar_widget.dart';
 import '../../avatar/screens/avatar_editor_screen.dart';
 import '../../avatar/providers/avatar_provider.dart';
@@ -72,10 +70,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return Scaffold(
       backgroundColor: px.bg,
       body: Stack(children: [
-        // ── Fixed hero background — flat Duolingo-style ──
+        // ── Fixed hero background — uses avatar bgColor ──
         Positioned(
           left: 0, right: 0, top: 0, height: heroH + MediaQuery.of(context).padding.top,
-          child: Container(color: const Color(0xFF1CB0F6)),
+          child: Builder(builder: (_) {
+            const bgColors = [
+              PxDecor.blue, PxDecor.purple, PxDecor.teal, PxDecor.green,
+              PxDecor.orange, PxDecor.red, Color(0xFF2A2A3E), Color(0xFF1A1A2E),
+            ];
+            final bgIdx = ref.watch(avatarProvider).bgColor.clamp(0, bgColors.length - 1);
+            return Container(color: bgColors[bgIdx]);
+          }),
         ),
         // ── Scrollable content overlay ──
         SafeArea(
@@ -316,46 +321,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     onChanged: (v) { ref.read(hapticEnabledProvider.notifier).setEnabled(v); Haptic.init(v); if (v) Haptic.medium(); },
                   ),
                 ),
-                // Debug-only streak test buttons
-                if (kDebugMode) ...[
-                  const SizedBox(height: 12),
-                  Text('Seri Test (Debug)', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: px.textMuted)),
-                  const SizedBox(height: 6),
-                  Row(children: [
-                    Expanded(child: GestureDetector(
-                      onTap: () async {
-                        final repo = ref.read(userStatsRepositoryProvider);
-                        await repo.debugSimulateStreakFreeze();
-                        final result = await repo.checkAndUpdateStreak();
-                        ref.invalidate(userStatsProvider);
-                        if (!mounted) return;
-                        final stats = await repo.getUserStats();
-                        StreakFreezeOverlay.show(context, type: result, streakCount: stats?.studyStreak ?? 0);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(color: const Color(0xFF4FC3F7).withAlpha(30), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFF4FC3F7), width: 2)),
-                        child: const Center(child: Text('Freeze Test', style: TextStyle(color: Color(0xFF4FC3F7), fontWeight: FontWeight.w800, fontSize: 12))),
-                      ),
-                    )),
-                    const SizedBox(width: 8),
-                    Expanded(child: GestureDetector(
-                      onTap: () async {
-                        final repo = ref.read(userStatsRepositoryProvider);
-                        await repo.debugSimulateStreakBroken();
-                        final result = await repo.checkAndUpdateStreak();
-                        ref.invalidate(userStatsProvider);
-                        if (!mounted) return;
-                        StreakFreezeOverlay.show(context, type: result, streakCount: 0);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(color: PxDecor.red.withAlpha(30), borderRadius: BorderRadius.circular(10), border: Border.all(color: PxDecor.red, width: 2)),
-                        child: const Center(child: Text('Break Test', style: TextStyle(color: PxDecor.red, fontWeight: FontWeight.w800, fontSize: 12))),
-                      ),
-                    )),
-                  ]),
-                ],
               ]),
             ),
             const SizedBox(height: 12),

@@ -14,11 +14,15 @@ import '../widgets/tasks/fill_blank_task.dart';
 import '../widgets/tasks/tap_select_task.dart';
 import '../widgets/tasks/spot_error_task.dart';
 import '../widgets/tasks/image_select_task.dart';
+import '../widgets/tasks/translate_sentence_task.dart';
+import '../widgets/tasks/speak_word_task.dart';
 import '../../stats/providers/user_stats_provider.dart';
 import '../../../core/ui/widgets/pixel_confirm_dialog.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../stats/widgets/level_up_popup.dart';
 import '../widgets/unit_complete_overlay.dart';
+import '../widgets/combo_overlay.dart';
+import '../../shop/widgets/quota_popup.dart';
 
 // ═══════════════════════════════════════════════════════════
 //  LESSON SCREEN — Multi-step (8 adim) pixel game ders akisi
@@ -50,6 +54,10 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
   int _totalWrong = 0;
   int _consecutiveCorrect = 0;
   int _livesRemaining = 3;
+  bool _answerRevealed = false;
+  int _skipsUsed = 0;
+  static const _maxSkips = 2;
+  DateTime _lastCorrectTime = DateTime(2000);
 
   // GlobalKeys — her adim yeni key alir
   GlobalKey<MatchingTaskState> _matchingKey = GlobalKey<MatchingTaskState>();
@@ -58,6 +66,8 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
   GlobalKey<TapSelectTaskState> _tapKey = GlobalKey<TapSelectTaskState>();
   GlobalKey<SpotErrorTaskState> _spotKey = GlobalKey<SpotErrorTaskState>();
   GlobalKey<ImageSelectTaskState> _imageKey = GlobalKey<ImageSelectTaskState>();
+  GlobalKey<TranslateSentenceTaskState> _translateKey = GlobalKey<TranslateSentenceTaskState>();
+  GlobalKey<SpeakWordTaskState> _speakKey = GlobalKey<SpeakWordTaskState>();
 
   @override
   void initState() {
@@ -145,6 +155,12 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
           item['labels'] = indices.map((i) => labels[i]).toList();
           item['correct_index'] = indices.indexOf(idx);
         }
+      } else if (type == 'translate_sentence') {
+        final chips = item['word_chips'] as List?;
+        if (chips != null && chips.length > 1) {
+          final shuffled = List<dynamic>.from(chips)..shuffle(rng);
+          item['word_chips'] = shuffled;
+        }
       }
     }
   }
@@ -163,6 +179,8 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
       case 'tap_select': return _tapKey.currentState?.isReady ?? false;
       case 'spot_error': return _spotKey.currentState?.isReady ?? false;
       case 'image_select': return _imageKey.currentState?.isReady ?? false;
+      case 'translate_sentence': return _translateKey.currentState?.isReady ?? false;
+      case 'speak_word': return _speakKey.currentState?.isReady ?? false;
       default: return false;
     }
   }
@@ -176,6 +194,8 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
       case 'tap_select': ok = _tapKey.currentState!.checkAnswer(); break;
       case 'spot_error': ok = _spotKey.currentState!.checkAnswer(); break;
       case 'image_select': ok = _imageKey.currentState!.checkAnswer(); break;
+      case 'translate_sentence': ok = _translateKey.currentState!.checkAnswer(); break;
+      case 'speak_word': ok = _speakKey.currentState!.checkAnswer(); break;
     }
     setState(() {
       _answered = true;
@@ -186,6 +206,17 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
         // Her 2 ardisik dogruda 1 can geri kazan
         if (_consecutiveCorrect % 2 == 0 && _livesRemaining < 3) {
           _livesRemaining++;
+        }
+        // Kombo kontrolu: 3 veya 5 ardisik dogruda animasyon + enerji
+        final now = DateTime.now();
+        final isFast = now.difference(_lastCorrectTime).inSeconds < 8;
+        _lastCorrectTime = now;
+        if (_consecutiveCorrect == 3 || _consecutiveCorrect == 5 || (_consecutiveCorrect > 5 && _consecutiveCorrect % 5 == 0)) {
+          final energy = _consecutiveCorrect >= 5 ? 5 : 3;
+          _awardComboEnergy(energy);
+          if (mounted) {
+            ComboOverlay.show(context, streak: _consecutiveCorrect, energyAwarded: energy, compact: isFast);
+          }
         }
       }
       if (!ok) {
@@ -200,7 +231,14 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
       try {
         await ref.read(userStatsRepositoryProvider).useEnergy(amount: 3);
         ref.invalidate(userStatsProvider);
-      } catch (_) {}
+      } catch (_) {
+        // Enerji yetmezse kota popup goster
+        if (mounted) {
+          final rewarded = await QuotaPopup.show(context, ref, type: QuotaType.energy);
+          ref.invalidate(userStatsProvider);
+          if (!rewarded && mounted) { Navigator.of(context).maybePop(); return; }
+        }
+      }
       // Canlar bittiyse — dersi tekrar ettir
       if (_livesRemaining <= 0) {
         await Future.delayed(const Duration(milliseconds: 600));
@@ -211,7 +249,14 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
     }
   }
 
-  bool get _showCorrectAnswer => _wrongAttempts >= 2 && !_correct;
+  bool get _showCorrectAnswer => _answerRevealed && !_correct;
+
+  Future<void> _awardComboEnergy(int amount) async {
+    try {
+      await ref.read(userStatsRepositoryProvider).addEnergy(amount: amount);
+      ref.invalidate(userStatsProvider);
+    } catch (_) {}
+  }
 
   void _retry() {
     switch (_lesson!.taskType) {
@@ -221,8 +266,10 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
       case 'tap_select': _tapKey.currentState?.reset(); break;
       case 'spot_error': _spotKey.currentState?.reset(); break;
       case 'image_select': _imageKey.currentState?.reset(); break;
+      case 'translate_sentence': _translateKey.currentState?.reset(); break;
+      case 'speak_word': _speakKey.currentState?.reset(); break;
     }
-    setState(() { _answered = false; _correct = false; });
+    setState(() { _answered = false; _correct = false; _answerRevealed = false; });
   }
 
   void _restartLesson() {
@@ -235,12 +282,15 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
       _correctCount = 0;
       _consecutiveCorrect = 0;
       _livesRemaining = 3;
+      _answerRevealed = false;
       _matchingKey = GlobalKey<MatchingTaskState>();
       _orderKey = GlobalKey<OrderStepsTaskState>();
       _fillKey = GlobalKey<FillBlankTaskState>();
       _tapKey = GlobalKey<TapSelectTaskState>();
       _spotKey = GlobalKey<SpotErrorTaskState>();
       _imageKey = GlobalKey<ImageSelectTaskState>();
+      _translateKey = GlobalKey<TranslateSentenceTaskState>();
+      _speakKey = GlobalKey<SpeakWordTaskState>();
       _shuffleItemOptions();
     });
   }
@@ -298,6 +348,7 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
       _answered = false;
       _correct = false;
       _wrongAttempts = 0;
+      _answerRevealed = false;
       // Yeni key'ler olustur ki widget yeniden olusturulsun
       _matchingKey = GlobalKey<MatchingTaskState>();
       _orderKey = GlobalKey<OrderStepsTaskState>();
@@ -305,6 +356,8 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
       _tapKey = GlobalKey<TapSelectTaskState>();
       _spotKey = GlobalKey<SpotErrorTaskState>();
       _imageKey = GlobalKey<ImageSelectTaskState>();
+      _translateKey = GlobalKey<TranslateSentenceTaskState>();
+      _speakKey = GlobalKey<SpeakWordTaskState>();
     });
   }
 
@@ -403,8 +456,11 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
         _BottomBar(
           answered: _answered, correct: _correct, canCheck: _canCheck, completing: _completing,
           taskColor: meta.color, showCorrectAnswer: _showCorrectAnswer, wrongAttempts: _wrongAttempts,
-          isLastStep: _isLastStep,
+          isLastStep: _isLastStep, answerRevealed: _answerRevealed,
+          canSkip: _skipsUsed < _maxSkips, skipsRemaining: _maxSkips - _skipsUsed,
           onCheck: _checkAnswer, onRetry: _retry, onContinue: _completeLesson,
+          onRevealAnswer: () { setState(() => _answerRevealed = true); },
+          onSkip: () { setState(() => _skipsUsed++); _completeLesson(); },
         ),
       ]),
     );
@@ -429,18 +485,18 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
       case 'matching':
         final raw = (c['pairs'] as List?) ?? [];
         final pairs = raw.map((e) => Map<String, String>.from(e as Map)).toList();
-        return MatchingTask(key: _matchingKey, pairs: pairs, answered: _answered, onComplete: (_) {}, onChanged: _onTaskChanged);
+        return MatchingTask(key: _matchingKey, pairs: pairs, answered: _answered, showCorrectAnswer: _showCorrectAnswer, onComplete: (_) {}, onChanged: _onTaskChanged);
       case 'order_steps':
         final steps = (c['steps'] as List?)?.cast<String>() ?? [];
         final order = ((c['correct_order'] as List?) ?? []).map((e) => (e as num).toInt()).toList();
         final safeOrder = order.isEmpty ? List.generate(steps.length, (i) => i) : order;
-        return OrderStepsTask(key: _orderKey, instruction: (c['instruction'] as String?) ?? 'Dogru siraya koy', steps: steps, correctOrder: safeOrder, answered: _answered, onChanged: _onTaskChanged);
+        return OrderStepsTask(key: _orderKey, instruction: (c['instruction'] as String?) ?? 'Dogru siraya koy', steps: steps, correctOrder: safeOrder, answered: _answered, showCorrectAnswer: _showCorrectAnswer, onChanged: _onTaskChanged);
       case 'fill_blank':
-        return FillBlankTask(key: _fillKey, sentence: (c['sentence'] as String?) ?? '', answer: (c['answer'] as String?) ?? '', options: (c['options'] as List?)?.cast<String>() ?? [], answered: _answered, correct: _correct, onChanged: _onTaskChanged);
+        return FillBlankTask(key: _fillKey, sentence: (c['sentence'] as String?) ?? '', answer: (c['answer'] as String?) ?? '', options: (c['options'] as List?)?.cast<String>() ?? [], answered: _answered, correct: _correct, showCorrectAnswer: _showCorrectAnswer, onChanged: _onTaskChanged);
       case 'tap_select':
-        return TapSelectTask(key: _tapKey, question: (c['question'] as String?) ?? '', options: (c['options'] as List?)?.cast<String>() ?? [], correctIndex: (c['correct_index'] as num?)?.toInt() ?? 0, answered: _answered, onChanged: _onTaskChanged);
+        return TapSelectTask(key: _tapKey, question: (c['question'] as String?) ?? '', options: (c['options'] as List?)?.cast<String>() ?? [], correctIndex: (c['correct_index'] as num?)?.toInt() ?? 0, answered: _answered, showCorrectAnswer: _showCorrectAnswer, onChanged: _onTaskChanged);
       case 'spot_error':
-        return SpotErrorTask(key: _spotKey, sentence: (c['sentence'] as String?) ?? '', errorWord: (c['error_word'] as String?) ?? '', correction: (c['correction'] as String?) ?? '', answered: _answered, correct: _correct, showCorrectAnswer: _showCorrectAnswer, onChanged: _onTaskChanged);
+        return SpotErrorTask(key: _spotKey, sentence: (c['sentence'] as String?) ?? '', errorWord: (c['error_word'] as String?) ?? '', correction: (c['correction'] as String?) ?? '', answered: _answered, correct: _correct, showCorrectAnswer: _showCorrectAnswer, choices: (c['choices'] as List?)?.cast<String>(), onChanged: _onTaskChanged);
       case 'image_select':
         return ImageSelectTask(
           key: _imageKey,
@@ -449,7 +505,31 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
           labels: (c['labels'] as List?)?.cast<String>() ?? [],
           correctIndex: (c['correct_index'] as num?)?.toInt() ?? 0,
           answered: _answered,
+          showCorrectAnswer: _showCorrectAnswer,
           onChanged: _onTaskChanged,
+        );
+      case 'translate_sentence':
+        return TranslateSentenceTask(
+          key: _translateKey,
+          sourceSentence: (c['source_sentence'] as String?) ?? '',
+          correctTranslation: (c['correct_translation'] as String?) ?? '',
+          wordChips: (c['word_chips'] as List?)?.cast<String>() ?? [],
+          answered: _answered,
+          onChanged: _onTaskChanged,
+          langCode: (c['lang_code'] as String?) ?? 'en-US',
+          instruction: (c['instruction'] as String?) ?? 'Asagidaki cumleyi cevir',
+          stepIndex: _currentStep,
+        );
+      case 'speak_word':
+        return SpeakWordTask(
+          key: _speakKey,
+          nativeWord: (c['native_word'] as String?) ?? '',
+          targetWord: (c['target_word'] as String?) ?? '',
+          answered: _answered,
+          showCorrectAnswer: _showCorrectAnswer,
+          onChanged: _onTaskChanged,
+          langCode: (c['lang_code'] as String?) ?? 'en-US',
+          stepIndex: _currentStep,
         );
       default:
         return Center(child: Text('Bilinmeyen gorev tipi: ${_lesson!.taskType}'));
@@ -569,30 +649,31 @@ class _BottomBar extends StatelessWidget {
   const _BottomBar({
     required this.answered, required this.correct, required this.canCheck,
     required this.completing, required this.taskColor, required this.showCorrectAnswer,
-    required this.wrongAttempts, required this.isLastStep,
+    required this.wrongAttempts, required this.isLastStep, required this.answerRevealed,
+    required this.canSkip, required this.skipsRemaining,
     required this.onCheck, required this.onRetry, required this.onContinue,
+    required this.onRevealAnswer, required this.onSkip,
   });
 
-  final bool answered, correct, canCheck, completing, showCorrectAnswer, isLastStep;
-  final int wrongAttempts;
+  final bool answered, correct, canCheck, completing, showCorrectAnswer, isLastStep, answerRevealed, canSkip;
+  final int wrongAttempts, skipsRemaining;
   final Color taskColor;
-  final VoidCallback onCheck, onRetry;
+  final VoidCallback onCheck, onRetry, onRevealAnswer, onSkip;
   final Future<void> Function() onContinue;
 
   @override
   Widget build(BuildContext context) {
     final px = Px.of(context);
-    final isWrongFinal = answered && !correct && showCorrectAnswer;
+    // Yanlis + cevap acildi = turuncu bilgi, yanlis + acilmadi = kirmizi
+    final isWrongRevealed = answered && !correct && answerRevealed;
 
-    final feedColor = correct ? PxDecor.green : isWrongFinal ? PxDecor.orange : PxDecor.red;
-    final feedDark = correct ? PxDecor.greenDark : isWrongFinal ? PxDecor.orangeDark : PxDecor.redDark;
+    final feedColor = correct ? PxDecor.green : isWrongRevealed ? PxDecor.orange : PxDecor.red;
+    final feedDark = correct ? PxDecor.greenDark : isWrongRevealed ? PxDecor.orangeDark : PxDecor.redDark;
     final feedBg = correct
         ? (px.isDark ? PxDecor.green.withAlpha(25) : PxDecor.greenBg)
-        : isWrongFinal
+        : isWrongRevealed
             ? (px.isDark ? PxDecor.orange.withAlpha(25) : PxDecor.orangeBg)
             : (px.isDark ? PxDecor.red.withAlpha(25) : PxDecor.redBg);
-
-    final continueLabel = isLastStep ? 'Dersi Tamamla' : 'Sonraki Adim';
 
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
@@ -612,24 +693,60 @@ class _BottomBar extends StatelessWidget {
               boxShadow: [BoxShadow(color: feedDark.withAlpha(60), offset: const Offset(0, 3), blurRadius: 0)],
             ),
             child: Row(children: [
-              Icon(correct ? Icons.check_circle_rounded : isWrongFinal ? Icons.info_rounded : Icons.cancel_rounded, color: feedColor, size: 22),
+              Icon(correct ? Icons.check_circle_rounded : isWrongRevealed ? Icons.info_rounded : Icons.cancel_rounded, color: feedColor, size: 22),
               const SizedBox(width: 10),
               Expanded(child: Text(
-                correct ? 'Harika! Dogru cevap!' : isWrongFinal ? 'Dogru cevap gosteriliyor.' : 'Yanlis! Tekrar dene.',
+                correct ? 'Harika! Dogru cevap!' : isWrongRevealed ? 'Dogru cevabi incele, sonra tekrar dene.' : 'Yanlis! Tekrar dene.',
                 style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: feedDark),
               )),
             ]),
           ),
         ),
-        SizedBox(width: double.infinity, child: answered
-            ? correct
-                ? PrimaryButton(label: continueLabel, icon: Icons.arrow_forward_rounded, onPressed: completing ? null : onContinue, isLoading: completing, height: 54, depth: 6, color: PxDecor.green)
-                : isWrongFinal
-                    ? PrimaryButton(label: continueLabel, icon: Icons.arrow_forward_rounded, onPressed: completing ? null : onContinue, isLoading: completing, height: 54, depth: 6, color: PxDecor.orange)
-                    : PrimaryButton(label: 'Tekrar dene', icon: Icons.refresh_rounded, onPressed: onRetry, height: 54, depth: 6, color: PxDecor.orange)
-            : PrimaryButton(label: 'Kontrol et', icon: Icons.check_rounded, onPressed: canCheck ? onCheck : null, height: 54, depth: 6, color: taskColor),
-        ),
+        // Buton alani
+        SizedBox(width: double.infinity, child: _buildButtons(px)),
       ]),
+    );
+  }
+
+  Widget _buildButtons(Px px) {
+    if (!answered) {
+      return PrimaryButton(label: 'Kontrol et', icon: Icons.check_rounded, onPressed: canCheck ? onCheck : null, height: 54, depth: 6, color: taskColor);
+    }
+    // Dogru cevap
+    if (correct) {
+      final label = isLastStep ? 'Dersi Tamamla' : 'Sonraki Adim';
+      return PrimaryButton(label: label, icon: Icons.arrow_forward_rounded, onPressed: completing ? null : onContinue, isLoading: completing, height: 54, depth: 6, color: PxDecor.green);
+    }
+    // Yanlis — her zaman "Tekrar dene" goster
+    // Cevap acilmissa: tekrar dene + atla (sinirli)
+    // Cevap acilmamissa: tekrar dene + cevaba bak
+    return Column(children: [
+      PrimaryButton(label: 'Tekrar dene', icon: Icons.refresh_rounded, onPressed: onRetry, height: 54, depth: 6, color: PxDecor.orange),
+      const SizedBox(height: 8),
+      if (!answerRevealed && wrongAttempts >= 1)
+        _buildSecondaryButton(px, icon: Icons.visibility_rounded, label: 'Cevaba bak', onTap: onRevealAnswer)
+      else if (answerRevealed && canSkip)
+        _buildSecondaryButton(px, icon: Icons.skip_next_rounded, label: 'Atla ($skipsRemaining kaldi)', onTap: onSkip),
+    ]);
+  }
+
+  Widget _buildSecondaryButton(Px px, {required IconData icon, required String label, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: () { Haptic.light(); onTap(); },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: px.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: px.border, width: 2),
+        ),
+        child: Center(child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, color: px.textMuted, size: 18),
+          const SizedBox(width: 8),
+          Text(label, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: px.textMuted)),
+        ])),
+      ),
     );
   }
 }

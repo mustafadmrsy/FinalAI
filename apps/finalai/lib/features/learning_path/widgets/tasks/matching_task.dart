@@ -8,9 +8,10 @@ import '../../../../core/services/haptic_service.dart';
 // ═══════════════════════════════════════════════════════════════
 
 class MatchingTask extends StatefulWidget {
-  const MatchingTask({super.key, required this.pairs, required this.answered, required this.onComplete, this.onChanged});
+  const MatchingTask({super.key, required this.pairs, required this.answered, this.showCorrectAnswer = false, required this.onComplete, this.onChanged});
   final List<Map<String, String>> pairs;
   final bool answered;
+  final bool showCorrectAnswer;
   final ValueChanged<bool> onComplete;
   final VoidCallback? onChanged;
   @override
@@ -95,7 +96,7 @@ class MatchingTaskState extends State<MatchingTask> {
         final correct = p['term']!;
         final matched = _answers[def];
         final has = matched != null;
-        final ok = widget.answered && matched == correct;
+        final ok = widget.showCorrectAnswer && matched == correct;
         final bad = widget.answered && matched != null && matched != correct;
         final isTarget = _selectedTerm != null && !has && !widget.answered;
 
@@ -153,7 +154,8 @@ class MatchingTaskState extends State<MatchingTask> {
                   child: Container(width: 30, height: 30, decoration: BoxDecoration(color: px.accentBg(PxDecor.red), borderRadius: BorderRadius.circular(8), border: Border.all(color: PxDecor.red, width: 1.5)),
                     child: const Icon(Icons.close_rounded, color: PxDecor.red, size: 16)),
                 ),
-                if (widget.answered) Icon(ok ? Icons.check_circle_rounded : Icons.cancel_rounded, color: ok ? PxDecor.green : PxDecor.red, size: 24),
+                if (widget.showCorrectAnswer) Icon(ok ? Icons.check_circle_rounded : Icons.cancel_rounded, color: ok ? PxDecor.green : PxDecor.red, size: 24)
+                else if (widget.answered && bad) const Icon(Icons.cancel_rounded, color: PxDecor.red, size: 24),
               ]),
             ),
           ),

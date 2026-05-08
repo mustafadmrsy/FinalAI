@@ -22,7 +22,11 @@ class _AvatarEditorScreenState extends State<AvatarEditorScreen> with SingleTick
   late AvatarModel _avatar;
   late TabController _tabCtrl;
 
-  static const _tabs = ['Cinsiyet', 'Cilt', 'Sac', 'Gozler', 'Agiz', 'Kiyafet', 'Aksesuar'];
+  static const _tabs = ['Cinsiyet', 'Cilt', 'Sac', 'Gozler', 'Kaslar', 'Agiz', 'Kiyafet', 'Aksesuar'];
+  static const _bgColors = [
+    PxDecor.blue, PxDecor.purple, PxDecor.teal, PxDecor.green,
+    PxDecor.orange, PxDecor.red, Color(0xFF2A2A3E), Color(0xFF1A1A2E),
+  ];
 
   @override
   void initState() {
@@ -80,10 +84,40 @@ class _AvatarEditorScreenState extends State<AvatarEditorScreen> with SingleTick
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 20),
             margin: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: px.heroDeco(PxDecor.blue, PxDecor.blueDark),
+            decoration: px.heroDeco(_bgColors[_avatar.bgColor.clamp(0, _bgColors.length - 1)], HSLColor.fromColor(_bgColors[_avatar.bgColor.clamp(0, _bgColors.length - 1)]).withLightness(0.3).toColor()),
             child: Center(child: AvatarWidget(avatar: _avatar, size: 140)),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
+          // ── Background color picker ──
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(children: [
+              Text('Arkaplan', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11, color: px.textMuted)),
+              const SizedBox(width: 10),
+              Expanded(child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(children: List.generate(_bgColors.length, (i) {
+                  final sel = _avatar.bgColor == i;
+                  return GestureDetector(
+                    onTap: () => _update((a) => a.copyWith(bgColor: i)),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      width: 28, height: 28,
+                      margin: const EdgeInsets.only(right: 6),
+                      decoration: BoxDecoration(
+                        color: _bgColors[i],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: sel ? Colors.white : Colors.transparent, width: 2),
+                        boxShadow: sel ? [BoxShadow(color: _bgColors[i], blurRadius: 6)] : null,
+                      ),
+                      child: sel ? const Icon(Icons.check, color: Colors.white, size: 14) : null,
+                    ),
+                  );
+                })),
+              )),
+            ]),
+          ),
+          const SizedBox(height: 10),
 
           // ── Category tabs ──
           Container(
@@ -118,6 +152,7 @@ class _AvatarEditorScreenState extends State<AvatarEditorScreen> with SingleTick
                 _SkinTab(avatar: _avatar, onUpdate: _update, px: px),
                 _HairTab(avatar: _avatar, onUpdate: _update, px: px),
                 _EyeTab(avatar: _avatar, onUpdate: _update, px: px),
+                _EyebrowTab(avatar: _avatar, onUpdate: _update, px: px),
                 _MouthTab(avatar: _avatar, onUpdate: _update, px: px),
                 _OutfitTab(avatar: _avatar, onUpdate: _update, px: px),
                 _AccessoryTab(avatar: _avatar, onUpdate: _update, px: px),
@@ -207,15 +242,20 @@ class _HairTab extends StatelessWidget {
     return ListView(padding: const EdgeInsets.symmetric(horizontal: 20), children: [
       Text('Sac Stili', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: px.text)),
       const SizedBox(height: 10),
-      Wrap(spacing: 8, runSpacing: 8, children: List.generate(styles.length, (i) {
+      Wrap(spacing: 10, runSpacing: 10, children: List.generate(styles.length, (i) {
         final sel = avatar.hairStyle == i;
+        final preview = avatar.copyWith(hairStyle: i);
         return GestureDetector(
           onTap: () => onUpdate((a) => a.copyWith(hairStyle: i)),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            width: 80, height: 100,
             decoration: sel ? px.heroDeco(PxDecor.teal, PxDecor.tealDark, depth: 3) : px.cardDeco(depth: 3),
-            child: Text(styles[i], style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: sel ? Colors.white : px.text)),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              ClipRect(child: SizedBox(width: 50, height: 58, child: AvatarWidget(avatar: preview, size: 44))),
+              const SizedBox(height: 2),
+              Text(styles[i], style: TextStyle(fontWeight: FontWeight.w800, fontSize: 9, color: sel ? Colors.white : px.text), maxLines: 1, overflow: TextOverflow.ellipsis),
+            ]),
           ),
         );
       })),
@@ -261,13 +301,37 @@ class _EyeTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _StyleGrid(
+    return _AvatarPreviewGrid(
       labels: AvatarParts.eyeStyles,
       selected: avatar.eyeStyle,
       onSelect: (i) => onUpdate((a) => a.copyWith(eyeStyle: i)),
+      previewBuilder: (i) => avatar.copyWith(eyeStyle: i),
       px: px,
       label: 'Goz Stili',
       color: PxDecor.purple,
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  Eyebrow Tab
+// ═══════════════════════════════════════════════════
+class _EyebrowTab extends StatelessWidget {
+  const _EyebrowTab({required this.avatar, required this.onUpdate, required this.px});
+  final AvatarModel avatar;
+  final void Function(AvatarModel Function(AvatarModel)) onUpdate;
+  final Px px;
+
+  @override
+  Widget build(BuildContext context) {
+    return _AvatarPreviewGrid(
+      labels: AvatarParts.eyebrowStyles,
+      selected: avatar.eyebrowStyle,
+      onSelect: (i) => onUpdate((a) => a.copyWith(eyebrowStyle: i)),
+      previewBuilder: (i) => avatar.copyWith(eyebrowStyle: i),
+      px: px,
+      label: 'Kas Stili',
+      color: PxDecor.teal,
     );
   }
 }
@@ -283,10 +347,11 @@ class _MouthTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _StyleGrid(
+    return _AvatarPreviewGrid(
       labels: AvatarParts.mouthStyles,
       selected: avatar.mouthStyle,
       onSelect: (i) => onUpdate((a) => a.copyWith(mouthStyle: i)),
+      previewBuilder: (i) => avatar.copyWith(mouthStyle: i),
       px: px,
       label: 'Agiz Stili',
       color: PxDecor.orange,
@@ -308,15 +373,20 @@ class _OutfitTab extends StatelessWidget {
     return ListView(padding: const EdgeInsets.symmetric(horizontal: 20), children: [
       Text('Kiyafet Tipi', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: px.text)),
       const SizedBox(height: 10),
-      Wrap(spacing: 8, runSpacing: 8, children: List.generate(AvatarParts.outfits.length, (i) {
+      Wrap(spacing: 10, runSpacing: 10, children: List.generate(AvatarParts.outfits.length, (i) {
         final sel = avatar.outfit == i;
+        final preview = avatar.copyWith(outfit: i);
         return GestureDetector(
           onTap: () => onUpdate((a) => a.copyWith(outfit: i)),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            width: 80, height: 100,
             decoration: sel ? px.heroDeco(PxDecor.green, PxDecor.greenDark, depth: 3) : px.cardDeco(depth: 3),
-            child: Text(AvatarParts.outfits[i], style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: sel ? Colors.white : px.text)),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              ClipRect(child: SizedBox(width: 50, height: 58, child: AvatarWidget(avatar: preview, size: 44))),
+              const SizedBox(height: 2),
+              Text(AvatarParts.outfits[i], style: TextStyle(fontWeight: FontWeight.w800, fontSize: 9, color: sel ? Colors.white : px.text), maxLines: 1, overflow: TextOverflow.ellipsis),
+            ]),
           ),
         );
       })),
@@ -358,10 +428,11 @@ class _AccessoryTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _StyleGrid(
+    return _AvatarPreviewGrid(
       labels: AvatarParts.accessories,
       selected: avatar.accessory + 1,
       onSelect: (i) => onUpdate((a) => a.copyWith(accessory: i - 1)),
+      previewBuilder: (i) => avatar.copyWith(accessory: i - 1),
       px: px,
       label: 'Aksesuar',
       color: PxDecor.gold,
@@ -413,11 +484,12 @@ class _ColorGrid extends StatelessWidget {
   }
 }
 
-class _StyleGrid extends StatelessWidget {
-  const _StyleGrid({required this.labels, required this.selected, required this.onSelect, required this.px, required this.label, required this.color});
+class _AvatarPreviewGrid extends StatelessWidget {
+  const _AvatarPreviewGrid({required this.labels, required this.selected, required this.onSelect, required this.previewBuilder, required this.px, required this.label, required this.color});
   final List<String> labels;
   final int selected;
   final ValueChanged<int> onSelect;
+  final AvatarModel Function(int index) previewBuilder;
   final Px px;
   final String label;
   final Color color;
@@ -432,13 +504,18 @@ class _StyleGrid extends StatelessWidget {
         const SizedBox(height: 14),
         Wrap(spacing: 10, runSpacing: 10, children: List.generate(labels.length, (i) {
           final sel = selected == i;
+          final preview = previewBuilder(i);
           return GestureDetector(
             onTap: () => onSelect(i),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              width: 80, height: 100,
               decoration: sel ? px.heroDeco(color, dark, depth: 3) : px.cardDeco(depth: 3),
-              child: Text(labels[i], style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: sel ? Colors.white : px.text)),
+              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                ClipRect(child: SizedBox(width: 50, height: 58, child: AvatarWidget(avatar: preview, size: 44))),
+                const SizedBox(height: 2),
+                Text(labels[i], style: TextStyle(fontWeight: FontWeight.w800, fontSize: 9, color: sel ? Colors.white : px.text), maxLines: 1, overflow: TextOverflow.ellipsis),
+              ]),
             ),
           );
         })),

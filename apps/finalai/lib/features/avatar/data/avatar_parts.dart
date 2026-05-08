@@ -15,6 +15,8 @@ class AvatarParts {
     Color(0xFFD49A6A), // tan
     Color(0xFFAA7744), // brown
     Color(0xFF8B5E3C), // dark brown
+    Color(0xFF6B4226), // deep brown
+    Color(0xFFFFF0DB), // porcelain
   ];
 
   // ── Hair colors ─────────────────────────────
@@ -27,6 +29,10 @@ class AvatarParts {
     Color(0xFF6B4C9A), // purple
     Color(0xFF2E86AB), // blue
     Color(0xFF58CC02), // green
+    Color(0xFFFF6B9D), // pink
+    Color(0xFFFF9600), // orange
+    Color(0xFFE0E0E0), // silver/gray
+    Color(0xFF0ABFBC), // teal
   ];
 
   // ── Outfit colors ───────────────────────────
@@ -39,21 +45,28 @@ class AvatarParts {
     Color(0xFFFF9600), // orange
     Color(0xFF0ABFBC), // teal
     Color(0xFFFF6B9D), // pink
+    Color(0xFF2C1810), // black
+    Color(0xFFE0E0E0), // white/gray
+    Color(0xFF4A6741), // army green
+    Color(0xFF8B5E3C), // brown
   ];
 
   // ── Hair style labels ───────────────────────
-  static const hairStylesMale = ['Kisa', 'Dalgali', 'Yukari', 'Yana Taranmis', 'Dugme'];
-  static const hairStylesFemale = ['Uzun', 'Bob', 'At Kuyrugu', 'Topuz', 'Dalgali'];
+  static const hairStylesMale = ['Kisa', 'Dalgali', 'Yukari', 'Yana Taranmis', 'Dugme', 'Uzun', 'Afro', 'Mohawk'];
+  static const hairStylesFemale = ['Uzun', 'Bob', 'At Kuyrugu', 'Topuz', 'Dalgali', 'Pixie', 'Orgu', 'Kabarik'];
+
+  // ── Eyebrow style labels ───────────────────
+  static const eyebrowStyles = ['Normal', 'Kalin', 'Ince', 'Yukari', 'Kizgin', 'Yuvarlak'];
 
   // ── Eye style labels ────────────────────────
-  static const eyeStyles = ['Normal', 'Gozluk', 'Gunes Gozlugu', 'Kucuk', 'Buyuk'];
+  static const eyeStyles = ['Normal', 'Gozluk', 'Gunes Gozlugu', 'Kucuk', 'Buyuk', 'Uykulu', 'Kedi Goz', 'Yildiz'];
 
   // ── Mouth styles ────────────────────────────
-  static const mouthStyles = ['Gulumseme', 'Duz', 'Acik Agiz', 'Kucuk', 'Genis'];
+  static const mouthStyles = ['Gulumseme', 'Duz', 'Acik Agiz', 'Kucuk', 'Genis', 'Dudak', 'Saskin', 'Dis Gosterme'];
 
   // ── Accessories ─────────────────────────────
-  static const accessories = ['Yok', 'Sapka', 'Bere', 'Kurdele', 'Kulaklik'];
+  static const accessories = ['Yok', 'Sapka', 'Bere', 'Kurdele', 'Kulaklik', 'Tac', 'Bandana', 'Gunes Vizoru', 'Boncuk Kolye'];
 
   // ── Outfit labels ───────────────────────────
-  static const outfits = ['T-Shirt', 'Gomlek', 'Hoodie', 'Kazak'];
+  static const outfits = ['T-Shirt', 'Gomlek', 'Hoodie', 'Kazak', 'Yelek', 'Ceket', 'Elbise', 'Tank Top'];
 }

@@ -320,6 +320,57 @@ class AiService {
     }
   }
 
+  /// Dedicated method for learning plan generation.
+  /// Calls /ai/generate-plan with higher token limits and plan-specific system prompt.
+  static Future<AiPdfResult> generatePlan(String prompt) async {
+    final uri = Uri.parse('$_baseUrl/ai/generate-plan');
+
+    final client = HttpClient();
+    try {
+      final req = await client
+          .postUrl(uri)
+          .timeout(const Duration(seconds: 30), onTimeout: () {
+        throw TimeoutException(
+          'AI sunucusuna bağlanılamadı (timeout). URL: $_baseUrl',
+        );
+      });
+      req.headers.contentType = ContentType.json;
+
+      final body = jsonEncode({'prompt': prompt});
+      req.add(utf8.encode(body));
+
+      final res = await req.close().timeout(const Duration(minutes: 5), onTimeout: () {
+        throw TimeoutException(
+          'Plan üretimi zaman aşımına uğradı (5 dk). URL: $_baseUrl',
+        );
+      });
+      final resBody = await res.transform(utf8.decoder).join();
+
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        throw Exception('AI generate-plan failed (${res.statusCode}): $resBody');
+      }
+
+      final decoded = jsonDecode(resBody) as Map<String, dynamic>;
+      final serverJson = decoded['json'];
+      final normalized = decoded['normalized'];
+      final text = (decoded['text'] as String?) ?? '{}';
+      final usage = AiUsage.fromJson(decoded['usage']);
+
+      Map<String, dynamic> parsed;
+      if (serverJson != null && serverJson is Map) {
+        parsed = Map<String, dynamic>.from(serverJson);
+      } else if (normalized != null && normalized is String) {
+        parsed = _parseJson(normalized);
+      } else {
+        parsed = _parseJson(text);
+      }
+
+      return AiPdfResult(data: parsed, usage: usage);
+    } finally {
+      client.close();
+    }
+  }
+
   static Map<String, dynamic> _parseJson(String text) {
     String clean = text.replaceAll('```json', '').replaceAll('```', '').trim();
     if (!clean.startsWith('{') && clean.startsWith('"')) {
