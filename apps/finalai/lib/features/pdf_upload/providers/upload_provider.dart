@@ -1,5 +1,9 @@
+import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:syncfusion_flutter_pdf/pdf.dart';
 
 import '../../../core/services/ai_service.dart';
 import '../../../core/constants/app_constants.dart';
@@ -201,6 +205,20 @@ class UploadNotifier extends StateNotifier<UploadViewState> {
     }
   }
 
+  /// Extract text from PDF bytes using Syncfusion (runs on device)
+  String _extractTextFromPdf(List<int> bytes) {
+    try {
+      final document = PdfDocument(inputBytes: Uint8List.fromList(bytes));
+      final extractor = PdfTextExtractor(document);
+      final text = extractor.extractText();
+      document.dispose();
+      return text.trim();
+    } catch (e) {
+      debugPrint('PDF text extraction failed: $e');
+      return '';
+    }
+  }
+
   Future<void> uploadPdf(List<int> bytes, String fileName) async {
     try {
       await _ensureCanUploadToday();
@@ -215,26 +233,30 @@ class UploadNotifier extends StateNotifier<UploadViewState> {
         errorMessage: null,
       );
 
+      // Extract text from PDF on device (no need to send full PDF to server)
+      final extractedText = _extractTextFromPdf(bytes);
+      if (extractedText.isEmpty || extractedText.length < 50) {
+        throw Exception('PDF\'den metin çıkarılamadı. Lütfen metin içeren bir PDF yükleyin.');
+      }
+
+      state = state.copyWith(
+        progress: 0.15,
+        message: 'PDF metni çıkarıldı, yükleniyor...',
+      );
+
       final path = await _noteRepository.uploadPdf(bytes, fileName);
       try { await NotificationService.notifyPdfUploaded(fileName: fileName); } catch (_) {}
 
       state = state.copyWith(
         status: UploadStatus.processing,
-        message: 'AI ile analiz ediliyor... (Uzun PDF\'ler için birkaç dakika sürebilir)',
-        progress: 0.08,
+        message: 'AI ile analiz ediliyor... (Birkaç dakika sürebilir)',
+        progress: 0.25,
       );
 
-      final result = await AiService.processPdfWithProgress(
-        bytes,
-        onProgress: (p, msg) {
-          // p: 0-100 from server
-          final clamped = (p / 100.0).clamp(0.0, 1.0);
-          state = state.copyWith(
-            progress: clamped,
-            message: msg ?? state.message,
-          );
-        },
-      );
+      // Send only extracted text to backend (Claude) — not the full PDF
+      final result = await AiService.processText(extractedText);
+
+      state = state.copyWith(progress: 0.90);
 
       final usedTokens = result.usage?.totalTokens;
       if (usedTokens != null) {

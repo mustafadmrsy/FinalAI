@@ -14,7 +14,7 @@ class AdRewardService {
   RewardedAd? _rewardedAd;
   bool _isLoading = false;
 
-  // Android: production — iOS: test (iOS app henuz olusturulmadi)
+  // Android rewarded ad — will start serving after Play Store publication
   static const _androidAdUnitId = 'ca-app-pub-9992925769931813/2729527737';
   static const _iosAdUnitId = 'ca-app-pub-3940256099942544/1712485313';
 

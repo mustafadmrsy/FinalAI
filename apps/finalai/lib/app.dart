@@ -107,6 +107,8 @@ class _FinalAIAppState extends ConsumerState<FinalAIApp> with WidgetsBindingObse
     SupabaseService.authStateChanges.listen((data) {
       // Hesap degistiginde avatar'i yeni hesaba gore yenile
       ref.read(avatarProvider.notifier).reload();
+      // Hesap degistiginde kullanici istatistiklerini yenile
+      ref.invalidate(userStatsProvider);
     });
   }
 
