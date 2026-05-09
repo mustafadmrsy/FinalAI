@@ -14,7 +14,7 @@ process.on('unhandledRejection', (reason) => {
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: '20mb' }));
+app.use(express.json({ limit: '50mb' }));
 
 // Startup logging (kept from previous implementation)
 logPdfParseResolution();
