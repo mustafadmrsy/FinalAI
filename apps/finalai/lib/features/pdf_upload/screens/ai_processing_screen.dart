@@ -9,6 +9,7 @@ import 'package:lottie/lottie.dart';
 import '../../../core/ui/app_assets.dart';
 import '../../../core/ui/widgets/app_svg_icon.dart';
 import '../../home/providers/notes_provider.dart';
+import '../../stats/providers/user_stats_provider.dart';
 import '../providers/upload_provider.dart';
 
 class AiProcessingScreen extends ConsumerStatefulWidget {
@@ -136,10 +137,14 @@ class _AiProcessingScreenState extends ConsumerState<AiProcessingScreen> {
                       children: [
                         const AppSvgIcon(AppAssets.gameLightning, size: 14, color: AppColors.xp),
                         const SizedBox(width: 4),
-                        Text(
-                          state.aiTokensRemainingToday != null ? '${state.aiTokensRemainingToday}' : '-',
-                          style: AppTypography.labelMedium.copyWith(color: AppColors.textPrimaryLight, fontWeight: FontWeight.w800),
-                        ),
+                        Consumer(builder: (context, ref, _) {
+                          final stats = ref.watch(userStatsProvider).valueOrNull;
+                          final tokens = stats?.aiTokens;
+                          return Text(
+                            tokens != null ? '$tokens' : '-',
+                            style: AppTypography.labelMedium.copyWith(color: AppColors.textPrimaryLight, fontWeight: FontWeight.w800),
+                          );
+                        }),
                       ],
                     ),
                   ),
