@@ -138,7 +138,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           ? null
           : (defaultTargetPlatform == TargetPlatform.android ||
                   defaultTargetPlatform == TargetPlatform.iOS
-              ? 'com.mustafadmrsy.finalai://login-callback'
+              ? 'com.finalai://login-callback'
               : null);
 
       await _client.auth.signInWithOAuth(

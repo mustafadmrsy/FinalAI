@@ -96,7 +96,7 @@ export async function extractPdfTextFromBuffer(pdfBuffer) {
 
 export async function ocrPdfBufferToText(pdfBuffer, { lang, maxPages, onProgress } = {}) {
   const resolvedLang = lang || process.env.OCR_LANG || 'tur';
-  const maxPagesResolved = Number(maxPages ?? process.env.OCR_MAX_PAGES ?? 12) || 12;
+  const maxPagesResolved = Number(maxPages ?? process.env.OCR_MAX_PAGES ?? 5) || 5;
 
   const dataBytes = new Uint8Array(pdfBuffer.buffer, pdfBuffer.byteOffset, pdfBuffer.byteLength);
   const loadingTask = pdfjsLib.getDocument({ data: dataBytes, disableWorker: true });
@@ -148,7 +148,7 @@ export async function ocrPdfBufferToText(pdfBuffer, { lang, maxPages, onProgress
       const p = pagesSelected[i];
       onProgress?.({ phase: 'render', page: i + 1, total: pagesToProcess, pdfPage: p });
       const page = await pdf.getPage(p);
-      const viewport = page.getViewport({ scale: 2 });
+      const viewport = page.getViewport({ scale: 1.2 });
       const canvas = createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
       const ctx = canvas.getContext('2d');
       await page.render({ canvasContext: ctx, viewport }).promise;

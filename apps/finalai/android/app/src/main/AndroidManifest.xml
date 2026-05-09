@@ -35,7 +35,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
-                    android:scheme="com.mustafadmrsy.finalai"
+                    android:scheme="com.finalai"
                     android:host="login-callback" />
             </intent-filter>
         </activity>

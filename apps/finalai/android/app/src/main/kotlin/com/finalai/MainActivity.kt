@@ -1,4 +1,4 @@
-package com.example.finalai
+package com.finalai
 
 import io.flutter.embedding.android.FlutterActivity
 

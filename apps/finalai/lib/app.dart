@@ -136,28 +136,16 @@ class FilteringRouteInformationProvider extends RouteInformationProvider with Ch
 
   final RouteInformationProvider _inner;
 
-  bool _isUnsupportedScheme(Uri uri) {
-    final scheme = uri.scheme;
-    return scheme.isNotEmpty &&
-        scheme != 'http' &&
-        scheme != 'https' &&
-        scheme != 'com.mustafadmrsy.finalai';
-  }
-
   @override
   RouteInformation get value {
     final v = _inner.value;
     final uri = v.uri;
-    if (uri.scheme == 'com.mustafadmrsy.finalai') {
+    if (uri.scheme == 'com.finalai') {
       return RouteInformation(
         uri: Uri(path: '/auth', query: uri.query, fragment: uri.fragment),
         state: v.state,
       );
     }
-    if (_isUnsupportedScheme(uri)) {
-      return RouteInformation(uri: Uri(path: '/'), state: v.state);
-    }
-
     return v;
   }
 
@@ -167,7 +155,7 @@ class FilteringRouteInformationProvider extends RouteInformationProvider with Ch
     RouteInformationReportingType type = RouteInformationReportingType.none,
   }) {
     final uri = routeInformation.uri;
-    if (uri.scheme == 'com.mustafadmrsy.finalai') {
+    if (uri.scheme == 'com.finalai') {
       _inner.routerReportsNewRouteInformation(
         RouteInformation(
           uri: Uri(path: '/auth', query: uri.query, fragment: uri.fragment),

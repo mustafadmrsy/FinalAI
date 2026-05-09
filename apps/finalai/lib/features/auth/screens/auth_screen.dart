@@ -37,7 +37,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     _handledCallback = true;
     Future.microtask(() async {
       final redirectUri = Uri(
-        scheme: 'com.mustafadmrsy.finalai',
+        scheme: 'com.finalai',
         host: 'login-callback',
         query: uri.query,
         fragment: uri.fragment,
