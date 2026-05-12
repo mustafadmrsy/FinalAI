@@ -16,37 +16,64 @@ class AiPlanGenerator {
     required String goal,
     required int dailyMinutes,
   }) async {
-    final prompt = _buildPrompt(subject: subject, difficulty: difficulty, goal: goal, dailyMinutes: dailyMinutes);
+    final allUnits = <Map<String, dynamic>>[];
+    int aiGenerated = 0;
 
-    try {
-      final result = await AiService.generatePlan(prompt);
-      final data = result.data;
-      if (data.containsKey('units')) {
-        final units = data['units'] as List?;
-        if (units != null && units.isNotEmpty) {
-          _postProcessShuffleOptions(data);
+    // Generate plan in 5 chunks of 2 units each — small & fast
+    for (int chunk = 0; chunk < 5; chunk++) {
+      final unitStart = chunk * 2 + 1;
+      final unitEnd = unitStart + 1;
 
-          // AI bir miktar unite üretti — eksikleri fallback ile tamamla
-          if (units.length < 10) {
-            final fb = fallbackPlan(subject, difficulty);
-            final fbUnits = (fb['units'] as List?) ?? [];
-            for (int i = units.length; i < 10 && i < fbUnits.length; i++) {
-              units.add(fbUnits[i]);
-            }
-            // ignore: avoid_print
-            print('[AiPlanGenerator] AI returned ${units.length - (10 - fbUnits.length)} units, padded to ${units.length} with fallback');
+      try {
+        final prompt = _buildChunkPrompt(
+          subject: subject,
+          difficulty: difficulty,
+          goal: goal,
+          dailyMinutes: dailyMinutes,
+          unitStart: unitStart,
+          unitEnd: unitEnd,
+        );
+
+        final result = await AiService.generatePlan(prompt);
+        final data = result.data;
+        final units = (data['units'] as List?) ?? [];
+
+        if (units.isNotEmpty) {
+          for (int i = 0; i < units.length && i < 2; i++) {
+            final u = Map<String, dynamic>.from(units[i] as Map);
+            u['unit_index'] = unitStart + i;
+            allUnits.add(u);
+            aiGenerated++;
           }
-          return data;
+          // ignore: avoid_print
+          print('[AiPlanGenerator] Chunk $unitStart-$unitEnd: ${units.length} units from AI ✓');
+          continue;
         }
+      } catch (e) {
+        // ignore: avoid_print
+        print('[AiPlanGenerator] Chunk $unitStart-$unitEnd failed: $e');
+      }
+
+      // Fallback only for this chunk
+      final fb = fallbackPlan(subject, difficulty);
+      final fbUnits = (fb['units'] as List?) ?? [];
+      for (int i = unitStart - 1; i < unitEnd && i < fbUnits.length; i++) {
+        allUnits.add(Map<String, dynamic>.from(fbUnits[i] as Map));
       }
       // ignore: avoid_print
-      print('[AiPlanGenerator] AI responded but no valid units found. Keys: ${data.keys}');
-    } catch (e) {
-      // ignore: avoid_print
-      print('[AiPlanGenerator] AI plan generation failed: $e — using fallback');
+      print('[AiPlanGenerator] Chunk $unitStart-$unitEnd: using fallback');
     }
 
-    return fallbackPlan(subject, difficulty);
+    // ignore: avoid_print
+    print('[AiPlanGenerator] Total: $aiGenerated/10 units from AI');
+
+    if (allUnits.isEmpty) {
+      return fallbackPlan(subject, difficulty);
+    }
+
+    final result = {'units': allUnits};
+    _postProcessShuffleOptions(result);
+    return result;
   }
 
   static String _buildPrompt({
@@ -113,13 +140,12 @@ $langGuide
 7. ASLA ayni soruyu iki kere sorma. ASLA ayni eslestirme ciftlerini tekrarlama.
 
 === UNITE YAPISI ===
-1. 10 unite olustur. Uniteler ONKOSUL sirasiyla: kolay → orta → zor.
-   - Unite 1-3: Temel kavramlar ve giris
-   - Unite 4-6: Orta duzey uygulamalar
-   - Unite 7-9: Ileri konular ve sentez
-   - Unite 10: Genel tekrar ve baglanti kurma
+1. 5 unite olustur. Uniteler ONKOSUL sirasiyla: kolay → orta → zor.
+   - Unite 1-2: Temel kavramlar ve giris
+   - Unite 3-4: Orta duzey uygulamalar
+   - Unite 5: Ileri konular ve sentez
 2. Her unitenin "$subject" konusuna ozgu GERCEK ve SPESIFIK basligi olsun.
-3. Her unitede 5 ders. Her dersin OGRETICI, KONUYA OZGU basligi olsun.
+3. Her unitede 3 ders. Her dersin OGRETICI, KONUYA OZGU basligi olsun.
 
 === ICERIK FORMATI ===
 Her unitede sunlar olsun:
@@ -170,6 +196,67 @@ G) "translate_sentence" (SADECE dil dersleri icin): task_content = {{"items":[{{
 === CIKTI ===
 SADECE JSON. Aciklama, yorum, markdown, ``` isareti YAZMA.
 {{"units":[{{"unit_index":1,"title":"...","description":"3 cumle ozet. Anahtar kavramlar: x, y, z, t, w","lessons":[{{"lesson_index":1,"title":"...","description":"...","task_type":"matching","task_content":{{"items":[...]}}}}]}}]}}
+''';
+  }
+
+  /// Chunk-based prompt — generates exactly 2 units with 5 lessons each
+  static String _buildChunkPrompt({
+    required String subject,
+    required String difficulty,
+    required String goal,
+    required int dailyMinutes,
+    required int unitStart,
+    required int unitEnd,
+  }) {
+    final seed = DateTime.now().millisecondsSinceEpoch + unitStart * 7919;
+    final isLang = _isLanguageSubject(subject);
+
+    String chunkLevel;
+    if (unitStart <= 3) {
+      chunkLevel = 'temel/baslangic (kolay kavramlar, tanimlar, giris)';
+    } else if (unitStart <= 6) {
+      chunkLevel = 'orta (uygulama, analiz, problem cozme)';
+    } else {
+      chunkLevel = 'ileri (sentez, kritik dusunme, zor konular)';
+    }
+
+    final taskTypes = isLang
+        ? 'matching, fill_blank, tap_select, spot_error, image_select, translate_sentence, speak_word'
+        : 'matching, fill_blank, tap_select, spot_error, image_select';
+
+    return '''
+Sen "$subject" alaninda uzman bir egitim planlayicisisin. Turkce yanit ver.
+Tohum: $seed (BENZERSIZ icerik uret)
+
+GOREV: "$subject" icin unite $unitStart ve $unitEnd i olustur.
+Ogrenci: $difficulty seviye | Hedef: $goal | Gunluk: $dailyMinutes dk
+Bu uniteler $chunkLevel seviyesinde olmali.
+
+YAPI:
+- 2 unite, her unitede 5 ders
+- Her derste task_content.items icinde 4 soru/etkinlik
+- Her unite FARKLI alt konulari kapsamali
+- Her ders FARKLI task_type kullansin: $taskTypes
+
+FORMAT (SADECE bunlari kullan):
+matching: {{"items":[{{"pairs":[{{"term":"X","definition":"Y"}},{{"term":"A","definition":"B"}},{{"term":"C","definition":"D"}}]}},{{"pairs":[...]}},{{"pairs":[...]}},{{"pairs":[...]}}]}}
+fill_blank: {{"items":[{{"sentence":"... _____ ...","answer":"cevap","options":["cevap","y1","y2","y3"]}},{{}},{{}},{{}}]}}
+tap_select: {{"items":[{{"question":"Soru?","options":["A","B","C","D"],"correct_index":2}},{{}},{{}},{{}}]}}
+spot_error: {{"items":[{{"sentence":"Hatali cumle","error_word":"hata","correction":"dogru","choices":["k1","k2","hata","k3"]}},{{}},{{}},{{}}]}}
+image_select: {{"items":[{{"question":"?","images":["emoji1","emoji2","emoji3","emoji4"],"labels":["L1","L2","L3","L4"],"correct_index":0}},{{}},{{}},{{}}]}}
+${isLang ? 'translate_sentence: {{"items":[{{"source_sentence":"Turkce cumle","correct_translation":"Hedef dil","word_chips":["k1","k2","k3","ek1","ek2"],"lang_code":"en-US"}},{{}},{{}},{{}}]}}' : ''}
+${isLang ? 'speak_word: {{"items":[{{"native_word":"Turkce","target_word":"hedef dilde","lang_code":"en-US"}},{{}},{{}},{{}}]}}' : ''}
+
+KURALLAR:
+- YALNIZCA "$subject" konusuna ozgu sorular. Baska alandan soru SORMA.
+- Her soru FARKLI bir kavram/alt konu test etsin
+- correct_index 0-3 arasi DENGELI dagit
+- Secenekler mantikli yanilticilar olsun
+- ASLA placeholder ("Kavram A", "???") kullanma
+- Tum icerik GERCEK akademik bilgi olmali
+
+CIKTI: SADECE JSON. Aciklama/yorum/markdown YAZMA.
+{{"units":[{{"unit_index":$unitStart,"title":"Spesifik baslik","description":"Ozet ve kavramlar","lessons":[{{"lesson_index":1,"title":"Ders basligi","description":"Aciklama","task_type":"matching","task_content":{{"items":[...]}}}}]}}]}}
 ''';
   }
 
@@ -612,7 +699,9 @@ SADECE JSON. Aciklama, yorum, markdown, ``` isareti YAZMA.
     if (s.contains('yks') && s.contains('fen')) return _physUnits; // fizik agirlikli
     if (s.contains('yks') && (s.contains('turkce') || s.contains('sosyal'))) return _dgsUnits; // turkce+sozel agirlikli
     if (s.contains('kpss') && s.contains('mat')) return _mathUnits;
-    if (s.contains('kpss')) return _dgsUnits;
+    if (s.contains('kpss') && (s.contains('genel kultur') || s.contains('genel kulture') || s.contains('gk'))) return _tarihUnits;
+    if (s.contains('kpss') && (s.contains('genel yetenek') || s.contains('gy'))) return _dgsUnits;
+    if (s.contains('kpss')) return _tarihUnits;
     // Sosyal bilimler
     if (s.contains('tarih')) return _tarihUnits;
     if (s.contains('cografya')) return _tarihUnits;

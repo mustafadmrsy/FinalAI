@@ -61,7 +61,7 @@ class _PlacementStepState extends State<PlacementStep> with TickerProviderStateM
       final client = HttpClient();
       try {
         final req = await client.postUrl(uri).timeout(
-          const Duration(seconds: 10),
+          const Duration(seconds: 45),
           onTimeout: () => throw TimeoutException('Backend bağlantı timeout'),
         );
         req.headers.contentType = ContentType.json;

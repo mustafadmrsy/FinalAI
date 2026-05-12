@@ -337,7 +337,7 @@ router.post('/process-text', async (req, res) => {
 
     const modelCandidates = preferredModel
       ? [preferredModel]
-      : ['claude-sonnet-4-6', 'claude-opus-4-7', 'claude-sonnet-4-20250514', 'claude-haiku-4-5-20251001'];
+      : ['claude-sonnet-4-20250514', 'claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307'];
 
     let msg;
     let usedModel;
@@ -351,8 +351,10 @@ router.post('/process-text', async (req, res) => {
           messages: [{ role: 'user', content: prompt }],
         });
         usedModel = modelId;
+        console.log(`[ai/process-text] Using model: ${modelId}`);
         break;
       } catch (e) {
+        console.warn(`[ai/process-text] Model ${modelId} failed: ${e?.status ?? e?.message}`);
         if (e?.status === 404) continue;
         throw e;
       }
@@ -463,8 +465,8 @@ router.post('/generate-plan', async (req, res) => {
     const apiKey = requireEnv('ANTHROPIC_API_KEY');
     const temperature = Number.parseFloat(process.env.AI_TEMPERATURE ?? '0.7');
     const preferredModel = process.env.AI_MODEL;
-    // Plans are large — need high token limit (Turkish chars use more tokens)
-    const maxTokens = 32768;
+    // 2 units × 5 lessons per chunk — smaller requests for speed
+    const maxTokens = 8192;
 
     const { prompt: userPrompt } = req.body ?? {};
     if (!userPrompt || typeof userPrompt !== 'string') {
@@ -481,7 +483,7 @@ router.post('/generate-plan', async (req, res) => {
 
     const modelCandidates = preferredModel
       ? [preferredModel]
-      : ['claude-sonnet-4-6', 'claude-opus-4-7', 'claude-sonnet-4-20250514', 'claude-haiku-4-5-20251001'];
+      : ['claude-sonnet-4-20250514', 'claude-3-5-sonnet-20241022', 'claude-3-haiku-20240307'];
 
     let msg;
     let usedModel;
@@ -497,6 +499,7 @@ router.post('/generate-plan', async (req, res) => {
         usedModel = modelId;
         break;
       } catch (e) {
+        console.warn(`[ai/generate-plan] Model ${modelId} failed: ${e?.status ?? e?.message}`);
         if (e?.status === 404) continue;
         throw e;
       }
@@ -614,11 +617,9 @@ router.post('/placement-questions', async (req, res) => {
       'TAM 8 soru üret. JSON dışında hiçbir şey yazma.';
 
     const modelCandidates = [
-      'claude-sonnet-4-6',
-      'claude-opus-4-7',
       'claude-sonnet-4-20250514',
-      'claude-haiku-4-5-20251001',
-      'claude-sonnet-4-5-20250929',
+      'claude-3-5-sonnet-20241022',
+      'claude-3-haiku-20240307',
     ];
 
     let msg;
@@ -631,8 +632,10 @@ router.post('/placement-questions', async (req, res) => {
           system,
           messages: [{ role: 'user', content: prompt }],
         });
+        console.log(`[ai/placement-questions] Using model: ${modelId}`);
         break;
       } catch (e) {
+        console.warn(`[ai/placement-questions] Model ${modelId} failed: ${e?.status ?? e?.message}`);
         if (e?.status === 404) continue;
         throw e;
       }
