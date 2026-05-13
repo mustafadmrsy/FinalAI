@@ -61,19 +61,13 @@ class LearningPathRepository {
   }) async {
     final userId = _requireUserId();
 
-    // Try AI-generated plan, fall back to mock on failure
-    Map<String, dynamic> plan;
-    try {
-      plan = await AiPlanGenerator.generatePlan(
-        subject: subject,
-        difficulty: difficulty,
-        goal: goal,
-        dailyMinutes: dailyMinutes,
-      );
-    } catch (_) {
-      // If AI fails, use fallback
-      plan = AiPlanGenerator.fallbackPlan(subject, difficulty);
-    }
+    // AI generates the plan — no static fallback
+    final plan = await AiPlanGenerator.generatePlan(
+      subject: subject,
+      difficulty: difficulty,
+      goal: goal,
+      dailyMinutes: dailyMinutes,
+    );
 
     final aiUnits = (plan['units'] as List?) ?? [];
     final now = DateTime.now().toIso8601String();
@@ -96,19 +90,7 @@ class LearningPathRepository {
     }
 
     if (unitRows.isEmpty) {
-      // Ensure at least 10 units
-      for (int i = 1; i <= 10; i++) {
-        unitRows.add({
-          'user_id': userId,
-          'unit_index': i,
-          'title': 'Unite $i',
-          'description': '$subject - $difficulty',
-          'is_locked': i != 1,
-          'progress': 0,
-          'created_at': now,
-          'updated_at': now,
-        });
-      }
+      throw Exception('AI ünite üretilemedi.');
     }
 
     await _client.from('learning_units').upsert(unitRows, onConflict: 'user_id,unit_index');
@@ -139,52 +121,14 @@ class LearningPathRepository {
       }
     }
 
-    // If AI returned no lessons, generate fallback
     if (allLessons.isEmpty) {
-      await _generateFallbackLessons(userId, subject, difficulty);
-    } else {
-      await _client.from('learning_lessons').upsert(
-        allLessons,
-        onConflict: 'user_id,unit_index,lesson_index',
-      );
-    }
-  }
-
-  /// Fallback: generate simple lessons when AI is unavailable
-  Future<void> _generateFallbackLessons(String userId, String subject, String difficulty) async {
-    final now = DateTime.now().toIso8601String();
-    final fallback = AiPlanGenerator.fallbackPlan(subject, difficulty);
-    final aiUnits = (fallback['units'] as List?) ?? [];
-    final allLessons = <Map<String, dynamic>>[];
-
-    for (final u in aiUnits) {
-      final unit = u as Map<String, dynamic>;
-      final unitIdx = unit['unit_index'] as int;
-      final lessons = (unit['lessons'] as List?) ?? [];
-      for (final l in lessons) {
-        final lesson = l as Map<String, dynamic>;
-        allLessons.add({
-          'user_id': userId,
-          'unit_index': unitIdx,
-          'lesson_index': lesson['lesson_index'],
-          'title': lesson['title'],
-          'description': lesson['description'],
-          'task_type': lesson['task_type'],
-          'task_content': lesson['task_content'],
-          'is_locked': !(unitIdx == 1 && (lesson['lesson_index'] as int) == 1),
-          'progress': 0.0,
-          'created_at': now,
-          'updated_at': now,
-        });
-      }
+      throw Exception('AI ders içeriği üretilemedi.');
     }
 
-    if (allLessons.isNotEmpty) {
-      await _client.from('learning_lessons').upsert(
-        allLessons,
-        onConflict: 'user_id,unit_index,lesson_index',
-      );
-    }
+    await _client.from('learning_lessons').upsert(
+      allLessons,
+      onConflict: 'user_id,unit_index,lesson_index',
+    );
   }
 
   Future<({String subject, String difficulty})> _getUserLearningPrefs() async {
@@ -227,9 +171,12 @@ class LearningPathRepository {
       return list.map(LearningLessonModel.fromMap).toList();
     }
 
-    // If user was onboarded before lesson seeding existed, backfill lessons.
+    // If user was onboarded before lesson seeding existed, regenerate with AI.
     final prefs = await _getUserLearningPrefs();
-    await _generateFallbackLessons(userId, prefs.subject, prefs.difficulty);
+    await generateAndSaveInitialPlan(
+      subject: prefs.subject,
+      difficulty: prefs.difficulty,
+    );
 
     res = await _client
         .from('learning_lessons')
@@ -328,7 +275,7 @@ class LearningPathRepository {
     await _client.from('learning_lessons').delete().eq('user_id', userId);
     await _client.from('learning_units').delete().eq('user_id', userId);
 
-    // Re-generate using AI (will fall back if AI fails)
+    // Re-generate using AI
     await generateAndSaveInitialPlan(
       subject: prefs.subject,
       difficulty: prefs.difficulty,

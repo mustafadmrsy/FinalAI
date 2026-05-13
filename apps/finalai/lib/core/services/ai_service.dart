@@ -329,7 +329,7 @@ class AiService {
     try {
       final req = await client
           .postUrl(uri)
-          .timeout(const Duration(seconds: 60), onTimeout: () {
+          .timeout(const Duration(seconds: 90), onTimeout: () {
         throw TimeoutException(
           'AI sunucusuna bağlanılamadı (timeout). URL: $_baseUrl',
         );
@@ -339,9 +339,9 @@ class AiService {
       final body = jsonEncode({'prompt': prompt});
       req.add(utf8.encode(body));
 
-      final res = await req.close().timeout(const Duration(minutes: 2), onTimeout: () {
+      final res = await req.close().timeout(const Duration(minutes: 3), onTimeout: () {
         throw TimeoutException(
-          'Plan üretimi zaman aşımına uğradı (2 dk). URL: $_baseUrl',
+          'Plan üretimi zaman aşımına uğradı (3 dk). URL: $_baseUrl',
         );
       });
       final resBody = await res.transform(utf8.decoder).join();

@@ -64,7 +64,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
 
     if (error != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
+        const SnackBar(
+          content: Text('AI ders planı oluşturulamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.'),
+          duration: Duration(seconds: 5),
+        ),
       );
     }
   }

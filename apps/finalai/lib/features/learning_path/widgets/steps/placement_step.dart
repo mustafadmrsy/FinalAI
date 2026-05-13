@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 
 import '../../../../core/ui/app_assets.dart';
-import '../../data/placement_questions.dart';
 
 class PlacementStep extends StatefulWidget {
   const PlacementStep({
@@ -53,70 +52,95 @@ class _PlacementStepState extends State<PlacementStep> with TickerProviderStateM
   );
 
   Future<void> _generateQuestions() async {
+    debugPrint('[PlacementStep] Generating AI questions for: ${widget.subject}');
+    debugPrint('[PlacementStep] Backend URL: $_aiBaseUrl');
+
+    // Wake up backend (Render cold start)
     try {
-      debugPrint('[PlacementStep] Generating AI questions via Claude for: ${widget.subject}');
-      debugPrint('[PlacementStep] Backend URL: $_aiBaseUrl');
-
-      final uri = Uri.parse('$_aiBaseUrl/ai/placement-questions');
-      final client = HttpClient();
-      try {
-        final req = await client.postUrl(uri).timeout(
-          const Duration(seconds: 45),
-          onTimeout: () => throw TimeoutException('Backend bağlantı timeout'),
-        );
-        req.headers.contentType = ContentType.json;
-        req.add(utf8.encode(jsonEncode({
-          'subject': widget.subject,
-          'goal': widget.goal,
-          'dailyMinutes': widget.dailyMinutes,
-        })));
-
-        final res = await req.close().timeout(const Duration(seconds: 60));
-        final resBody = await res.transform(utf8.decoder).join();
-
-        debugPrint('[PlacementStep] Backend status: ${res.statusCode}');
-
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          final decoded = jsonDecode(resBody) as Map<String, dynamic>;
-          final questions = decoded['questions'] as List?;
-
-          if (questions != null && questions.length >= 4) {
-            final valid = questions.where((q) {
-              if (q is! Map) return false;
-              return q['q'] is String &&
-                  q['options'] is List &&
-                  (q['options'] as List).length == 4 &&
-                  q['answer'] is int &&
-                  (q['answer'] as int) >= 0 &&
-                  (q['answer'] as int) <= 3;
-            }).map((q) => (q as Map).cast<String, dynamic>()).toList();
-
-            debugPrint('[PlacementStep] Valid questions: ${valid.length}');
-
-            if (valid.length >= 4) {
-              if (mounted) setState(() { _questions = valid; _loadingQuestions = false; });
-              _startTimer();
-              return;
-            }
-          }
-        } else {
-          debugPrint('[PlacementStep] Backend error: $resBody');
-        }
-      } finally {
-        client.close();
-      }
+      final hc = HttpClient();
+      final hReq = await hc.getUrl(Uri.parse('$_aiBaseUrl/health')).timeout(const Duration(seconds: 90));
+      final hRes = await hReq.close().timeout(const Duration(seconds: 90));
+      await hRes.drain<void>();
+      hc.close();
+      debugPrint('[PlacementStep] Backend awake ✓');
     } catch (e) {
-      debugPrint('[PlacementStep] AI error: $e');
+      debugPrint('[PlacementStep] Wake-up ping failed: $e');
     }
 
-    // Fallback
-    debugPrint('[PlacementStep] Using static fallback questions');
+    // Retry up to 3 times with increasing timeout
+    for (int attempt = 1; attempt <= 3; attempt++) {
+      final timeout = 60 + (attempt * 30); // 90s, 120s, 150s
+      try {
+        final uri = Uri.parse('$_aiBaseUrl/ai/placement-questions');
+        final client = HttpClient();
+        try {
+          final req = await client.postUrl(uri).timeout(
+            Duration(seconds: timeout),
+            onTimeout: () => throw TimeoutException('Bağlantı timeout (deneme $attempt)'),
+          );
+          req.headers.contentType = ContentType.json;
+          req.add(utf8.encode(jsonEncode({
+            'subject': widget.subject,
+            'goal': widget.goal,
+            'dailyMinutes': widget.dailyMinutes,
+          })));
+
+          final res = await req.close().timeout(Duration(seconds: timeout));
+          final resBody = await res.transform(utf8.decoder).join();
+
+          debugPrint('[PlacementStep] Attempt $attempt - Status: ${res.statusCode}');
+
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            final decoded = jsonDecode(resBody) as Map<String, dynamic>;
+            final questions = decoded['questions'] as List?;
+
+            if (questions != null && questions.length >= 4) {
+              final valid = questions.where((q) {
+                if (q is! Map) return false;
+                return q['q'] is String &&
+                    q['options'] is List &&
+                    (q['options'] as List).length == 4 &&
+                    q['answer'] is int &&
+                    (q['answer'] as int) >= 0 &&
+                    (q['answer'] as int) <= 3;
+              }).map((q) => (q as Map).cast<String, dynamic>()).toList();
+
+              debugPrint('[PlacementStep] Valid questions: ${valid.length}');
+
+              if (valid.length >= 4) {
+                if (mounted) setState(() { _questions = valid; _loadingQuestions = false; });
+                _startTimer();
+                return;
+              }
+            }
+          } else {
+            debugPrint('[PlacementStep] Backend error: $resBody');
+          }
+        } finally {
+          client.close();
+        }
+      } catch (e) {
+        debugPrint('[PlacementStep] Attempt $attempt failed: $e');
+      }
+
+      // Wait before retry (let Render wake up)
+      if (attempt < 3) {
+        await Future.delayed(const Duration(seconds: 3));
+      }
+    }
+
+    // All retries failed — show error, do NOT use static fallback
+    debugPrint('[PlacementStep] All 3 attempts failed — showing error');
     if (mounted) {
-      setState(() {
-        _questions = PlacementQuestions.forSubject(widget.subject);
-        _loadingQuestions = false;
-      });
-      _startTimer();
+      setState(() { _loadingQuestions = false; });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('AI sunucusuna bağlanılamadı. Lütfen tekrar deneyin.'),
+          duration: Duration(seconds: 5),
+        ),
+      );
+      // Go back so user can retry
+      widget.onGoBack();
     }
   }
 

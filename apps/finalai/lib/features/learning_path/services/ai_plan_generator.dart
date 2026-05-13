@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 
 import '../../../core/services/ai_service.dart';
@@ -7,8 +9,8 @@ final _rng = Random(DateTime.now().millisecondsSinceEpoch);
 class AiPlanGenerator {
   AiPlanGenerator._();
 
-  static const _taskTypes = ['matching', 'order_steps', 'fill_blank', 'tap_select', 'spot_error', 'image_select'];
-  static const _langTaskTypes = ['translate_sentence', 'matching', 'fill_blank', 'image_select', 'tap_select', 'speak_word', 'spot_error', 'translate_sentence'];
+  static const _taskTypes = ['matching', 'fill_blank', 'tap_select', 'spot_error', 'image_select'];
+  static const _langTaskTypes = ['translate_sentence', 'matching', 'fill_blank', 'image_select', 'tap_select', 'speak_word', 'spot_error'];
 
   static Future<Map<String, dynamic>> generatePlan({
     required String subject,
@@ -16,64 +18,93 @@ class AiPlanGenerator {
     required String goal,
     required int dailyMinutes,
   }) async {
+    // Wake up Render backend before real AI calls (cold start ~30-50s)
+    await _wakeUpBackend();
+
     final allUnits = <Map<String, dynamic>>[];
-    int aiGenerated = 0;
 
     // Generate plan in 5 chunks of 2 units each — small & fast
     for (int chunk = 0; chunk < 5; chunk++) {
       final unitStart = chunk * 2 + 1;
       final unitEnd = unitStart + 1;
+      bool chunkSuccess = false;
 
-      try {
-        final prompt = _buildChunkPrompt(
-          subject: subject,
-          difficulty: difficulty,
-          goal: goal,
-          dailyMinutes: dailyMinutes,
-          unitStart: unitStart,
-          unitEnd: unitEnd,
-        );
+      // Retry each chunk up to 3 times
+      for (int attempt = 1; attempt <= 3 && !chunkSuccess; attempt++) {
+        try {
+          final prompt = _buildChunkPrompt(
+            subject: subject,
+            difficulty: difficulty,
+            goal: goal,
+            dailyMinutes: dailyMinutes,
+            unitStart: unitStart,
+            unitEnd: unitEnd,
+          );
 
-        final result = await AiService.generatePlan(prompt);
-        final data = result.data;
-        final units = (data['units'] as List?) ?? [];
+          final result = await AiService.generatePlan(prompt);
+          final data = result.data;
+          final units = (data['units'] as List?) ?? [];
 
-        if (units.isNotEmpty) {
-          for (int i = 0; i < units.length && i < 2; i++) {
-            final u = Map<String, dynamic>.from(units[i] as Map);
-            u['unit_index'] = unitStart + i;
-            allUnits.add(u);
-            aiGenerated++;
+          if (units.isNotEmpty) {
+            for (int i = 0; i < units.length && i < 2; i++) {
+              final u = Map<String, dynamic>.from(units[i] as Map);
+              u['unit_index'] = unitStart + i;
+              allUnits.add(u);
+            }
+            // ignore: avoid_print
+            print('[AiPlanGenerator] Chunk $unitStart-$unitEnd: ${units.length} units from AI ✓');
+            chunkSuccess = true;
           }
+        } catch (e) {
           // ignore: avoid_print
-          print('[AiPlanGenerator] Chunk $unitStart-$unitEnd: ${units.length} units from AI ✓');
-          continue;
+          print('[AiPlanGenerator] Chunk $unitStart-$unitEnd attempt $attempt failed: $e');
+          if (attempt < 3) {
+            await Future.delayed(const Duration(seconds: 3));
+          }
         }
-      } catch (e) {
-        // ignore: avoid_print
-        print('[AiPlanGenerator] Chunk $unitStart-$unitEnd failed: $e');
       }
 
-      // Fallback only for this chunk
-      final fb = fallbackPlan(subject, difficulty);
-      final fbUnits = (fb['units'] as List?) ?? [];
-      for (int i = unitStart - 1; i < unitEnd && i < fbUnits.length; i++) {
-        allUnits.add(Map<String, dynamic>.from(fbUnits[i] as Map));
+      if (!chunkSuccess) {
+        // ignore: avoid_print
+        print('[AiPlanGenerator] Chunk $unitStart-$unitEnd: ALL 3 attempts failed!');
       }
-      // ignore: avoid_print
-      print('[AiPlanGenerator] Chunk $unitStart-$unitEnd: using fallback');
     }
 
     // ignore: avoid_print
-    print('[AiPlanGenerator] Total: $aiGenerated/10 units from AI');
+    print('[AiPlanGenerator] Total: ${allUnits.length}/10 units from AI');
 
     if (allUnits.isEmpty) {
-      return fallbackPlan(subject, difficulty);
+      throw Exception('AI plan üretilemedi. Lütfen tekrar deneyin.');
     }
 
     final result = {'units': allUnits};
     _postProcessShuffleOptions(result);
     return result;
+  }
+
+  static const String _backendUrl = String.fromEnvironment(
+    'AI_BASE_URL',
+    defaultValue: 'https://finalai-zpza.onrender.com',
+  );
+
+  /// Ping backend to wake it up from Render cold start
+  static Future<void> _wakeUpBackend() async {
+    try {
+      final client = HttpClient();
+      final req = await client
+          .getUrl(Uri.parse('$_backendUrl/health'))
+          .timeout(const Duration(seconds: 90), onTimeout: () {
+        throw TimeoutException('Wake-up ping timeout');
+      });
+      final res = await req.close().timeout(const Duration(seconds: 90));
+      await res.drain<void>();
+      client.close();
+      // ignore: avoid_print
+      print('[AiPlanGenerator] Backend wake-up: status ${res.statusCode}');
+    } catch (e) {
+      // ignore: avoid_print
+      print('[AiPlanGenerator] Backend wake-up failed: $e (will still try AI calls)');
+    }
   }
 
   static String _buildPrompt({

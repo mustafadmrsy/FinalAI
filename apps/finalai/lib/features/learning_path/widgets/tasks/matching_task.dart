@@ -19,44 +19,57 @@ class MatchingTask extends StatefulWidget {
 }
 
 class MatchingTaskState extends State<MatchingTask> {
-  final Map<String, String> _answers = {};
-  late List<String> _shuffled;
-  String? _selectedTerm;
+  // Index-based: slot index -> term index
+  final Map<int, int> _answers = {};
+  late List<Map<String, String>> _uniquePairs;
+  late List<int> _shuffledTermIndices;
+  int? _selectedTermIdx;
 
   @override
   void initState() {
     super.initState();
-    _shuffled = widget.pairs.map((p) => p['term']!).toList()..shuffle();
+    // Deduplicate pairs by both term and definition to avoid collisions
+    final seen = <String>{};
+    _uniquePairs = [];
+    for (final p in widget.pairs) {
+      final key = '${p['term']}|||${p['definition']}';
+      if (!seen.contains(key) && (p['term'] ?? '').isNotEmpty && (p['definition'] ?? '').isNotEmpty) {
+        seen.add(key);
+        _uniquePairs.add(p);
+      }
+    }
+    if (_uniquePairs.isEmpty) _uniquePairs = List.from(widget.pairs);
+    _shuffledTermIndices = List.generate(_uniquePairs.length, (i) => i)..shuffle();
   }
 
-  bool get isReady => _answers.length == widget.pairs.length;
-  bool checkAnswer() => widget.pairs.every((p) => _answers[p['definition']] == p['term']);
+  bool get isReady => _answers.length == _uniquePairs.length;
+  bool checkAnswer() => _answers.entries.every((e) => e.value == e.key);
 
   void reset() {
-    setState(() { _answers.clear(); _shuffled.shuffle(); _selectedTerm = null; });
+    setState(() { _answers.clear(); _shuffledTermIndices.shuffle(); _selectedTermIdx = null; });
     widget.onChanged?.call();
   }
 
-  void _selectTerm(String term) {
+  void _selectTerm(int termIdx) {
     if (widget.answered) return;
-    if (_answers.containsValue(term)) return;
-    setState(() => _selectedTerm = _selectedTerm == term ? null : term);
+    if (_answers.containsValue(termIdx)) return;
+    setState(() => _selectedTermIdx = _selectedTermIdx == termIdx ? null : termIdx);
   }
 
-  void _selectSlot(String def) {
+  void _selectSlot(int slotIdx) {
     if (widget.answered) return;
-    if (_answers.containsKey(def)) return;
-    if (_selectedTerm == null) return;
+    if (_answers.containsKey(slotIdx)) return;
+    if (_selectedTermIdx == null) return;
     setState(() {
-      _answers[def] = _selectedTerm!;
-      _selectedTerm = null;
+      _answers[slotIdx] = _selectedTermIdx!;
+      _selectedTermIdx = null;
     });
     widget.onChanged?.call();
   }
 
-  void _remove(String def) {
+  void _remove(int slotIdx) {
     if (widget.answered) return;
-    setState(() => _answers.remove(def));
+    setState(() => _answers.remove(slotIdx));
     widget.onChanged?.call();
   }
 
@@ -83,27 +96,27 @@ class MatchingTaskState extends State<MatchingTask> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(color: PxDecor.teal, borderRadius: BorderRadius.circular(8), boxShadow: [BoxShadow(color: PxDecor.tealDark.withAlpha(60), offset: const Offset(0, 2), blurRadius: 0)]),
-            child: Text('${_answers.length}/${widget.pairs.length}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12)),
+            child: Text('${_answers.length}/${_uniquePairs.length}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12)),
           ),
         ]),
       ),
       const SizedBox(height: 16),
 
       // Definition slots (targets)
-      ...List.generate(widget.pairs.length, (i) {
-        final p = widget.pairs[i];
+      ...List.generate(_uniquePairs.length, (i) {
+        final p = _uniquePairs[i];
         final def = p['definition']!;
-        final correct = p['term']!;
-        final matched = _answers[def];
-        final has = matched != null;
-        final ok = widget.showCorrectAnswer && matched == correct;
-        final bad = widget.answered && matched != null && matched != correct;
-        final isTarget = _selectedTerm != null && !has && !widget.answered;
+        final matchedTermIdx = _answers[i];
+        final has = matchedTermIdx != null;
+        final matchedTerm = has ? _uniquePairs[matchedTermIdx]['term']! : null;
+        final ok = widget.showCorrectAnswer && has && matchedTermIdx == i;
+        final bad = widget.answered && has && matchedTermIdx != i;
+        final isTarget = _selectedTermIdx != null && !has && !widget.answered;
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: GestureDetector(
-            onTap: isTarget ? () { Haptic.selection(); _selectSlot(def); } : null,
+            onTap: isTarget ? () { Haptic.selection(); _selectSlot(i); } : null,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),
               padding: const EdgeInsets.all(12),
@@ -139,7 +152,7 @@ class MatchingTaskState extends State<MatchingTask> {
                       ),
                     ),
                     child: Text(
-                      has ? matched : (isTarget ? 'Buraya yerlestir' : '_ _ _ _ _'),
+                      matchedTerm ?? (isTarget ? 'Buraya yerlestir' : '_ _ _ _ _'),
                       style: TextStyle(
                         fontWeight: has ? FontWeight.w800 : FontWeight.w600, fontSize: 14,
                         color: has ? (ok ? PxDecor.greenDark : bad ? PxDecor.redDark : PxDecor.tealDark) : (isTarget ? PxDecor.teal : px.textMuted),
@@ -150,7 +163,7 @@ class MatchingTaskState extends State<MatchingTask> {
                 ])),
                 const SizedBox(width: 6),
                 if (has && !widget.answered) GestureDetector(
-                  onTap: () { Haptic.light(); _remove(def); },
+                  onTap: () { Haptic.light(); _remove(i); },
                   child: Container(width: 30, height: 30, decoration: BoxDecoration(color: px.accentBg(PxDecor.red), borderRadius: BorderRadius.circular(8), border: Border.all(color: PxDecor.red, width: 1.5)),
                     child: const Icon(Icons.close_rounded, color: PxDecor.red, size: 16)),
                 ),
@@ -171,11 +184,12 @@ class MatchingTaskState extends State<MatchingTask> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Kavramlar', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: px.textSub)),
           const SizedBox(height: 10),
-          Wrap(spacing: 8, runSpacing: 8, children: _shuffled.map((t) {
-            final used = _answers.containsValue(t);
-            final selected = _selectedTerm == t;
+          Wrap(spacing: 8, runSpacing: 8, children: _shuffledTermIndices.map((termIdx) {
+            final t = _uniquePairs[termIdx]['term']!;
+            final used = _answers.containsValue(termIdx);
+            final selected = _selectedTermIdx == termIdx;
             return GestureDetector(
-              onTap: (!used && !widget.answered) ? () { Haptic.selection(); _selectTerm(t); } : null,
+              onTap: (!used && !widget.answered) ? () { Haptic.selection(); _selectTerm(termIdx); } : null,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
