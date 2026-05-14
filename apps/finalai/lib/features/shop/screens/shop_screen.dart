@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../learning_path/widgets/tasks/task_helpers.dart';
 import '../../stats/providers/user_stats_provider.dart';
@@ -151,22 +152,18 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                 ),
                 const SizedBox(height: 28),
 
+                // ── PDF Hakki ──
+                Text('PDF Hakki', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: px.text)),
+                const SizedBox(height: 6),
+                Text('Kalan: ${stats.pdfCredits} hak', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: px.textMuted)),
+                const SizedBox(height: 12),
+                _PdfCreditCard(px: px, isPremium: stats.isPremium),
+                const SizedBox(height: 28),
+
                 // ── Premium ──
                 Text('Premium Uyelik', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: px.text)),
                 const SizedBox(height: 12),
                 _PremiumCard(px: px, isPremium: stats.isPremium),
-                const SizedBox(height: 28),
-
-                // ── Satin alma paketleri ──
-                Text('Token Paketleri', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: px.text)),
-                const SizedBox(height: 12),
-                Row(children: [
-                  Expanded(child: _TokenPackCard(px: px, amount: 10, productId: ProductIds.tokenPack10, price: PurchaseService.instance.priceOf(ProductIds.tokenPack10, fallback: '29.99 TL'), color: PxDecor.blue, dark: PxDecor.blueDark, emoji: '💎')),
-                  const SizedBox(width: 10),
-                  Expanded(child: _TokenPackCard(px: px, amount: 30, productId: ProductIds.tokenPack30, price: PurchaseService.instance.priceOf(ProductIds.tokenPack30, fallback: '69.99 TL'), color: PxDecor.purple, dark: PxDecor.purpleDark, emoji: '👑', popular: true)),
-                  const SizedBox(width: 10),
-                  Expanded(child: _TokenPackCard(px: px, amount: 100, productId: ProductIds.tokenPack100, price: PurchaseService.instance.priceOf(ProductIds.tokenPack100, fallback: '149.99 TL'), color: PxDecor.gold, dark: PxDecor.goldDark, emoji: '🏆')),
-                ]),
                 const SizedBox(height: 24),
               ],
             );
@@ -333,7 +330,7 @@ class _PremiumCard extends StatelessWidget {
       onTap: () {
         Haptic.light();
         // Premium ekranina yonlendir
-        Navigator.of(context).pushNamed('/premium');
+        context.push('/premium');
       },
       child: Container(
         padding: const EdgeInsets.all(18),
@@ -371,67 +368,79 @@ class _PremiumCard extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  TOKEN PACK CARD
+//  PDF CREDIT CARD
 // ═══════════════════════════════════════════════════════════
-class _TokenPackCard extends StatelessWidget {
-  const _TokenPackCard({
-    required this.px, required this.amount, required this.price,
-    required this.color, required this.dark, required this.emoji,
-    required this.productId,
-    this.popular = false,
-  });
+class _PdfCreditCard extends StatelessWidget {
+  const _PdfCreditCard({required this.px, required this.isPremium});
   final Px px;
-  final int amount;
-  final String price;
-  final String productId;
-  final Color color, dark;
-  final String emoji;
-  final bool popular;
+  final bool isPremium;
 
   @override
   Widget build(BuildContext context) {
+    if (isPremium) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: px.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: PxDecor.green, width: 2),
+          boxShadow: [BoxShadow(color: PxDecor.greenDark.withAlpha(40), offset: const Offset(0, 3), blurRadius: 0)],
+        ),
+        child: Row(children: [
+          Container(
+            width: 44, height: 44,
+            decoration: BoxDecoration(color: PxDecor.green.withAlpha(30), borderRadius: BorderRadius.circular(12)),
+            child: const Icon(Icons.all_inclusive_rounded, color: PxDecor.green, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Sinirsiz PDF', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: px.text)),
+            const SizedBox(height: 2),
+            Text('Premium ile sinirsiz PDF yukleyebilirsin', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 11, color: px.textMuted)),
+          ])),
+          const Icon(Icons.check_circle_rounded, color: PxDecor.green, size: 24),
+        ]),
+      );
+    }
+
     return GestureDetector(
       onTap: () async {
         Haptic.light();
-        final ok = await PurchaseService.instance.buy(productId);
+        final ok = await PurchaseService.instance.buy(ProductIds.pdfCredits5);
         if (!ok && context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Satin alma baslatilamadi. Lutfen tekrar deneyin.', style: TextStyle(fontWeight: FontWeight.w700)), backgroundColor: PxDecor.blue),
+            const SnackBar(content: Text('Satin alma baslatilamadi.', style: TextStyle(fontWeight: FontWeight.w700)), backgroundColor: PxDecor.red),
           );
         }
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: px.card,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: popular ? color : px.border, width: popular ? 2.5 : 2),
-          boxShadow: [BoxShadow(color: (popular ? dark : px.shadow).withAlpha(popular ? 60 : 30), offset: const Offset(0, 4), blurRadius: 0)],
+          border: Border.all(color: PxDecor.orange, width: 2),
+          boxShadow: [BoxShadow(color: PxDecor.orangeDark.withAlpha(40), offset: const Offset(0, 3), blurRadius: 0)],
         ),
-        child: Column(children: [
-          if (popular) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(8)),
-              child: const Text('POPULER', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 9, color: Colors.white, letterSpacing: 1)),
-            ),
-            const SizedBox(height: 6),
-          ] else
-            const SizedBox(height: 18),
-          Text(emoji, style: const TextStyle(fontSize: 28)),
-          const SizedBox(height: 6),
-          Text('$amount', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22, color: px.text)),
-          Text('Token', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 11, color: px.textMuted)),
-          const SizedBox(height: 8),
+        child: Row(children: [
           Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            width: 44, height: 44,
+            decoration: BoxDecoration(color: PxDecor.orange.withAlpha(30), borderRadius: BorderRadius.circular(12)),
+            child: const Icon(Icons.picture_as_pdf_rounded, color: PxDecor.orange, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('+5 PDF Hakki', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: px.text)),
+            const SizedBox(height: 2),
+            Text('5 adet PDF yukleme hakki satin al', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 11, color: px.textMuted)),
+          ])),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: [BoxShadow(color: dark.withAlpha(80), offset: const Offset(0, 2), blurRadius: 0)],
+              color: PxDecor.orange,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [BoxShadow(color: PxDecor.orangeDark.withAlpha(80), offset: const Offset(0, 3), blurRadius: 0)],
             ),
-            child: Center(child: Text(price, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: Colors.white))),
+            child: Text(PurchaseService.instance.priceOf(ProductIds.pdfCredits5, fallback: '₺29.99'), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: Colors.white)),
           ),
         ]),
       ),

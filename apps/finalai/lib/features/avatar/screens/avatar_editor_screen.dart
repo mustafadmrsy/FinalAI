@@ -497,9 +497,9 @@ class _AvatarPreviewGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = HSLColor.fromColor(color).withLightness(0.35).toColor();
-    return Padding(
+    return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      children: [
         Text(label, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: px.text)),
         const SizedBox(height: 14),
         Wrap(spacing: 10, runSpacing: 10, children: List.generate(labels.length, (i) {
@@ -519,7 +519,8 @@ class _AvatarPreviewGrid extends StatelessWidget {
             ),
           );
         })),
-      ]),
+        const SizedBox(height: 20),
+      ],
     );
   }
 }

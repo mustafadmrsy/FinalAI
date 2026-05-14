@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/learning_unit_model.dart';
@@ -58,6 +59,7 @@ class LearningPathRepository {
     required String difficulty,
     String goal = '',
     int dailyMinutes = 15,
+    void Function(int percent)? onProgress,
   }) async {
     final userId = _requireUserId();
 
@@ -67,6 +69,7 @@ class LearningPathRepository {
       difficulty: difficulty,
       goal: goal,
       dailyMinutes: dailyMinutes,
+      onProgress: onProgress,
     );
 
     final aiUnits = (plan['units'] as List?) ?? [];
@@ -93,7 +96,9 @@ class LearningPathRepository {
       throw Exception('AI ünite üretilemedi.');
     }
 
+    debugPrint('[LearningPathRepo] Saving ${unitRows.length} units...');
     await _client.from('learning_units').upsert(unitRows, onConflict: 'user_id,unit_index');
+    debugPrint('[LearningPathRepo] Units saved ✓');
 
     // Save lessons from AI output
     final allLessons = <Map<String, dynamic>>[];
@@ -125,10 +130,12 @@ class LearningPathRepository {
       throw Exception('AI ders içeriği üretilemedi.');
     }
 
+    debugPrint('[LearningPathRepo] Saving ${allLessons.length} lessons...');
     await _client.from('learning_lessons').upsert(
       allLessons,
       onConflict: 'user_id,unit_index,lesson_index',
     );
+    debugPrint('[LearningPathRepo] Lessons saved ✓');
   }
 
   Future<({String subject, String difficulty})> _getUserLearningPrefs() async {

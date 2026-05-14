@@ -9,6 +9,7 @@ import '../../stats/providers/user_stats_provider.dart';
 import '../../stats/widgets/xp_level_popup.dart';
 import '../../stats/widgets/streak_popup.dart';
 import '../../stats/widgets/energy_popup.dart';
+import '../../stats/widgets/hero_xp_card.dart';
 import '../../learning_path/widgets/tasks/task_helpers.dart';
 import '../../../core/services/haptic_service.dart';
 
@@ -75,62 +76,14 @@ class HomeScreen extends ConsumerWidget {
               const SizedBox(width: 8),
               statsAsync.when(
                 loading: () => const SizedBox.shrink(),
-                error: (_, __) => _pxBadge(px, PxIcons.xpIcon, PxIcons.xpColor, '0'),
-                data: (s) => GestureDetector(
-                  onTap: () { Haptic.light(); if (s != null) XpLevelPopup.show(context, s); },
-                  child: _pxBadge(px, PxIcons.xpIcon, PxIcons.xpColor, '${s?.xpTotal ?? 0}'),
+                error: (_, __) => const SizedBox.shrink(),
+                data: (s) => s == null ? const SizedBox.shrink() : GreenXpBadge(
+                  stats: s,
+                  onTap: () { Haptic.light(); XpLevelPopup.show(context, s); },
                 ),
               ),
             ]),
             const SizedBox(height: 20),
-
-            // ─── Hero XP card ───
-            statsAsync.when(
-              loading: () => const SizedBox.shrink(),
-              error: (_, __) => const SizedBox.shrink(),
-              data: (s) {
-                final xp = s?.xpTotal ?? 0;
-                final level = (xp / 500).floor() + 1;
-                final xpInLevel = xp % 500;
-                return GestureDetector(
-                onTap: () { Haptic.light(); if (s != null) XpLevelPopup.show(context, s); },
-                child: Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: px.heroDeco(PxDecor.teal, PxDecor.tealDark),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Row(children: [
-                      Container(
-                        width: 48, height: 48,
-                        decoration: BoxDecoration(color: Colors.white.withAlpha(40), borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.white.withAlpha(80), width: 2)),
-                        child: Center(child: Text('$level', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 22))),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('Seviye $level', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
-                        const SizedBox(height: 2),
-                        Text('${500 - xpInLevel} XP daha kazanarak seviye atla!', style: TextStyle(color: Colors.white.withAlpha(200), fontWeight: FontWeight.w600, fontSize: 12)),
-                      ])),
-                    ]),
-                    const SizedBox(height: 16),
-                    Row(children: [
-                      Text('$xpInLevel', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
-                      const SizedBox(width: 8),
-                      Expanded(child: Container(
-                        height: 14,
-                        decoration: BoxDecoration(color: Colors.white.withAlpha(50), borderRadius: BorderRadius.circular(7), border: Border.all(color: Colors.white.withAlpha(60), width: 1.5)),
-                        child: LayoutBuilder(builder: (_, c) => Stack(children: [
-                          Container(width: c.maxWidth * (xpInLevel / 500).clamp(0, 1), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6))),
-                        ])),
-                      )),
-                      const SizedBox(width: 8),
-                      Text('500 XP', style: TextStyle(color: Colors.white.withAlpha(180), fontWeight: FontWeight.w700, fontSize: 12)),
-                    ]),
-                  ]),
-                ),
-              );
-              },
-            ),
-            const SizedBox(height: 16),
 
             // ─── Daily Goal ───
             const DailyGoalCard(),

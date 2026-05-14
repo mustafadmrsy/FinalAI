@@ -22,6 +22,7 @@ import '../../../core/services/haptic_service.dart';
 import '../../stats/widgets/level_up_popup.dart';
 import '../widgets/unit_complete_overlay.dart';
 import '../widgets/combo_overlay.dart';
+import '../widgets/lesson_complete_overlay.dart';
 import '../../shop/widgets/quota_popup.dart';
 
 // ═══════════════════════════════════════════════════════════
@@ -211,11 +212,10 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
         final now = DateTime.now();
         final isFast = now.difference(_lastCorrectTime).inSeconds < 8;
         _lastCorrectTime = now;
-        if (_consecutiveCorrect == 3 || _consecutiveCorrect == 5 || (_consecutiveCorrect > 5 && _consecutiveCorrect % 5 == 0)) {
-          final energy = _consecutiveCorrect >= 5 ? 5 : 3;
-          _awardComboEnergy(energy);
+        if (_consecutiveCorrect == 3) {
+          _awardComboEnergy(3);
           if (mounted) {
-            ComboOverlay.show(context, streak: _consecutiveCorrect, energyAwarded: energy, compact: isFast);
+            ComboOverlay.show(context, streak: 3, energyAwarded: 3, compact: isFast);
           }
         }
       }
@@ -363,48 +363,54 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
 
   Future<void> _completeLesson() async {
     if (!_isLastStep) { _goNextStep(); return; }
-    setState(() => _completing = true);
+    setState(() { _completing = true; _exiting = true; });
+
+    // XP hesapla (senkron)
+    final statsRepo = ref.read(userStatsRepositoryProvider);
+    final cachedStats = ref.read(userStatsProvider).valueOrNull;
+    final oldXp = cachedStats?.xpTotal ?? 0;
+    final oldLevel = GameEngineService.levelFromXp(oldXp);
+    final xp = GameEngineService.calculateXpReward(comboCount: cachedStats?.comboCurrent ?? 0);
+    final perfectBonus = _totalWrong == 0 ? GameEngineService.perfectBonus : 0;
+    final totalXp = xp + perfectBonus;
+    final newLevel = GameEngineService.levelFromXp(oldXp + totalXp);
+
+    // Overlay'i HEMEN goster — async islemler arka planda devam etsin
+    final saveFuture = _saveLessonProgress(statsRepo, totalXp, xp);
+    await LessonCompleteOverlay.show(
+      context,
+      xpEarned: totalXp,
+      correctCount: _correctCount,
+      totalSteps: _totalSteps,
+      isPerfect: _totalWrong == 0,
+    );
+    // Kullanici "Devam Et"e bastiginda async bitmemisse bekle
+    await saveFuture;
+    if (!mounted) return;
+    // Unite tamamlandi mi? — kutlama goster
+    if (_isLastLessonInUnit && mounted) {
+      await UnitCompleteOverlay.show(context);
+    }
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    // Level up check
+    if (newLevel > oldLevel && mounted) {
+      await Future.delayed(const Duration(milliseconds: 400));
+      if (mounted) LevelUpPopup.show(context, newLevel: newLevel);
+    }
+  }
+
+  /// Arka planda ders ilerlemesini kaydet
+  Future<void> _saveLessonProgress(dynamic statsRepo, int totalXp, int xp) async {
     try {
-      final statsRepo = ref.read(userStatsRepositoryProvider);
-      final stats = await statsRepo.getUserStats();
-      final oldXp = stats?.xpTotal ?? 0;
-      final oldLevel = (oldXp / 500).floor() + 1;
-      final xp = GameEngineService.calculateXpReward(comboCount: stats?.comboCurrent ?? 0);
-      final perfectBonus = _totalWrong == 0 ? 50 : 0;
-      final totalXp = xp + perfectBonus;
       await statsRepo.updateXpAndCombo(xpGain: totalXp, comboIncrease: 1);
-      final newLevel = ((oldXp + totalXp) / 500).floor() + 1;
-      // Ders bitir: -1 enerji
       try { await statsRepo.useEnergy(amount: 1); } catch (_) {}
-      // Gunluk gorev ilerlemesi
       await statsRepo.incrementDailyQuest(lessons: 1, xp: xp, correct: _correctCount);
       await ref.read(learningPathRepositoryProvider).completeLessonAndUnlockNext(widget.unitIndex, widget.lessonIndex);
       ref.invalidate(userStatsProvider);
       ref.invalidate(learningUnitsProvider);
       ref.invalidate(learningLessonsByUnitProvider);
-      if (!mounted) return;
-      _exiting = true;
-      // Unite tamamlandi mi? — kutlama goster
-      if (_isLastLessonInUnit && mounted) {
-        await UnitCompleteOverlay.show(context);
-      }
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      final bonusText = perfectBonus > 0 ? '  (+$perfectBonus bonus!)' : '';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ders tamamlandi! +$totalXp XP$bonusText  ($_correctCount/$_totalSteps dogru)', style: const TextStyle(fontWeight: FontWeight.w700)), backgroundColor: AppColors.success),
-      );
-      // Level up check
-      if (newLevel > oldLevel && mounted) {
-        await Future.delayed(const Duration(milliseconds: 400));
-        if (mounted) LevelUpPopup.show(context, newLevel: newLevel);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red));
-    } finally {
-      if (mounted) setState(() => _completing = false);
-    }
+    } catch (_) {}
   }
 
   // ── Build ──────────────────────────────────────────────

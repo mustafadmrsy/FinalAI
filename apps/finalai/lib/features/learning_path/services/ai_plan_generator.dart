@@ -17,6 +17,7 @@ class AiPlanGenerator {
     required String difficulty,
     required String goal,
     required int dailyMinutes,
+    void Function(int percent)? onProgress,
   }) async {
     // Wake up Render backend before real AI calls (cold start ~30-50s)
     await _wakeUpBackend();
@@ -29,8 +30,9 @@ class AiPlanGenerator {
       final unitEnd = unitStart + 1;
       bool chunkSuccess = false;
 
-      // Retry each chunk up to 3 times
-      for (int attempt = 1; attempt <= 3 && !chunkSuccess; attempt++) {
+      // Retry each chunk up to 5 times with backoff
+      Object? lastError;
+      for (int attempt = 1; attempt <= 5 && !chunkSuccess; attempt++) {
         try {
           final prompt = _buildChunkPrompt(
             subject: subject,
@@ -52,21 +54,24 @@ class AiPlanGenerator {
               allUnits.add(u);
             }
             // ignore: avoid_print
-            print('[AiPlanGenerator] Chunk $unitStart-$unitEnd: ${units.length} units from AI ✓');
+            print('[AiPlanGenerator] Chunk $unitStart-$unitEnd: ${units.length} units from AI \u2713');
             chunkSuccess = true;
+            onProgress?.call(((chunk + 1) / 5 * 100).round());
           }
         } catch (e) {
+          lastError = e;
           // ignore: avoid_print
           print('[AiPlanGenerator] Chunk $unitStart-$unitEnd attempt $attempt failed: $e');
-          if (attempt < 3) {
-            await Future.delayed(const Duration(seconds: 3));
+          if (attempt < 5) {
+            await Future.delayed(Duration(seconds: min(3 * attempt, 9)));
           }
         }
       }
 
       if (!chunkSuccess) {
         // ignore: avoid_print
-        print('[AiPlanGenerator] Chunk $unitStart-$unitEnd: ALL 3 attempts failed!');
+        print('[AiPlanGenerator] Chunk $unitStart-$unitEnd: ALL attempts failed — aborting');
+        throw lastError ?? Exception('Chunk $unitStart-$unitEnd generation failed');
       }
     }
 

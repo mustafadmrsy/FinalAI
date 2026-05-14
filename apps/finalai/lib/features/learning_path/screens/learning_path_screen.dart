@@ -7,6 +7,10 @@ import '../providers/learning_path_providers.dart';
 import '../widgets/zigzag_path_list.dart';
 import '../widgets/duo_circle_node.dart';
 import '../widgets/tasks/task_helpers.dart';
+import '../../stats/providers/user_stats_provider.dart';
+import '../../stats/widgets/xp_level_popup.dart';
+import '../../stats/widgets/hero_xp_card.dart';
+import '../../../core/services/haptic_service.dart';
 
 class LearningPathScreen extends ConsumerWidget {
   const LearningPathScreen({super.key});
@@ -15,6 +19,7 @@ class LearningPathScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final px = Px.of(context);
     final units = ref.watch(learningUnitsProvider);
+    final statsAsync = ref.watch(userStatsProvider);
 
     return Scaffold(
       backgroundColor: px.bg,
@@ -34,14 +39,13 @@ class LearningPathScreen extends ConsumerWidget {
               child: Column(children: [
                 Row(children: [
                   Expanded(child: Text('Egitim Yolun', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22, color: px.text))),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: px.heroDeco(PxIcons.xpColor, PxIcons.xpDark, depth: 3),
-                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(PxIcons.xpIcon, color: Colors.white, size: 16),
-                      SizedBox(width: 4),
-                      Text('XP', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12)),
-                    ]),
+                  statsAsync.when(
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                    data: (s) => s == null ? const SizedBox.shrink() : GreenXpBadge(
+                      stats: s,
+                      onTap: () { Haptic.light(); XpLevelPopup.show(context, s); },
+                    ),
                   ),
                 ]),
                 const SizedBox(height: 16),

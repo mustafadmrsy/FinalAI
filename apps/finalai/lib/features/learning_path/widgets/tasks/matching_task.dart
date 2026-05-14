@@ -112,6 +112,9 @@ class MatchingTaskState extends State<MatchingTask> {
         final ok = widget.showCorrectAnswer && has && matchedTermIdx == i;
         final bad = widget.answered && has && matchedTermIdx != i;
         final isTarget = _selectedTermIdx != null && !has && !widget.answered;
+        // Dogru cevap: slot i'nin dogru termi (pair indexi == slot indexi)
+        final correctTerm = _uniquePairs[i]['term']!;
+        final showCorrection = widget.showCorrectAnswer && bad;
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -136,6 +139,7 @@ class MatchingTaskState extends State<MatchingTask> {
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(def, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: px.text)),
                   const SizedBox(height: 4),
+                  // Kullanicinin verdigi cevap
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
                     width: double.infinity,
@@ -157,9 +161,28 @@ class MatchingTaskState extends State<MatchingTask> {
                         fontWeight: has ? FontWeight.w800 : FontWeight.w600, fontSize: 14,
                         color: has ? (ok ? PxDecor.greenDark : bad ? PxDecor.redDark : PxDecor.tealDark) : (isTarget ? PxDecor.teal : px.textMuted),
                         fontStyle: has ? FontStyle.normal : FontStyle.italic,
+                        decoration: showCorrection ? TextDecoration.lineThrough : null,
                       ),
                     ),
                   ),
+                  // Dogru cevabi goster (yanlis eslesmede)
+                  if (showCorrection) ...[
+                    const SizedBox(height: 4),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: px.accentBg(PxDecor.green),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: PxDecor.green, width: 2, strokeAlign: BorderSide.strokeAlignInside),
+                      ),
+                      child: Row(children: [
+                        const Icon(Icons.check_circle_rounded, color: PxDecor.green, size: 16),
+                        const SizedBox(width: 6),
+                        Expanded(child: Text(correctTerm, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: PxDecor.greenDark))),
+                      ]),
+                    ),
+                  ],
                 ])),
                 const SizedBox(width: 6),
                 if (has && !widget.answered) GestureDetector(

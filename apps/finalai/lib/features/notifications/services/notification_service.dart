@@ -339,6 +339,50 @@ class NotificationService {
     );
   }
 
+  // ── Plan hazir bildirimi ─────────────────────────
+  static Future<void> notifyPlanReady({required String subject}) async {
+    // Progress bildirimini iptal et
+    try { await _plugin.cancel(_planProgressId); } catch (_) {}
+    await show(
+      title: 'Plan Hazir! 🎯',
+      body: '"$subject" icin ogrenme planin olusturuldu. Hemen basla!',
+      type: NotificationType.general,
+      data: {'subject': subject},
+    );
+  }
+
+  // ── Plan ilerleme bildirimi (ongoing) ────────────
+  static const _planProgressId = 8000;
+  static Future<void> showPlanProgress({required int percent, required String subject}) async {
+    try {
+      await init();
+      final androidDetails = AndroidNotificationDetails(
+        'finalai_progress', 'FinalAI Ilerleme',
+        channelDescription: 'AI plan olusturma ilerlemesi',
+        importance: Importance.low,
+        priority: Priority.low,
+        icon: '@mipmap/ic_launcher',
+        ongoing: true,
+        autoCancel: false,
+        showProgress: true,
+        maxProgress: 100,
+        progress: percent,
+        onlyAlertOnce: true,
+      );
+      final details = NotificationDetails(android: androidDetails, iOS: const DarwinNotificationDetails());
+      await _plugin.show(_planProgressId, '$subject plani hazirlaniyor...', '%$percent tamamlandi', details);
+    } catch (e) {
+      debugPrint('[NotifService] Progress show error: $e');
+    }
+  }
+
+  static Future<void> cancelPlanProgress() async {
+    try {
+      await init();
+      await _plugin.cancel(_planProgressId);
+    } catch (_) {}
+  }
+
   // ═══════════════════════════════════════════════════
   //  MISC NOTIFICATIONS
   // ═══════════════════════════════════════════════════
@@ -425,6 +469,15 @@ class NotificationService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_storageKey);
     } catch (_) {}
+  }
+
+  /// Tum zamanlanmis bildirimleri iptal et ve gecmisi temizle (hesap silme icin)
+  static Future<void> cancelAllAndClear() async {
+    try {
+      await init();
+      await _plugin.cancelAll();
+    } catch (_) {}
+    await clearHistory();
   }
 
   // ═══════════════════════════════════════════════════

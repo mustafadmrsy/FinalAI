@@ -3,29 +3,35 @@ import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 
 // ═══════════════════════════════════════════════════════════════
-//  PURCHASE SERVICE — In-App Purchase (Premium + Token paketleri)
-//  Google Play Console'da olusturulacak urun ID'leri:
-//    Subscriptions:  premium_silver, premium_gold, premium_diamond
-//    Consumables:    token_pack_10, token_pack_30, token_pack_100
+//  PURCHASE SERVICE — In-App Purchase (Premium Subscriptions)
+//  Google Play Console urun ID'leri:
+//    Subscriptions:  premium_plus, premium_pro
+//    Consumables:    pdf_credits_5
 // ═══════════════════════════════════════════════════════════════
 
 // Urun ID'leri — Google Play Console'da ayni ID ile olustur
 class ProductIds {
-  static const premiumSilver = 'premium_silver';
-  static const premiumGold = 'premium_gold';
-  static const premiumDiamond = 'premium_diamond';
-  static const tokenPack10 = 'token_pack_10';
-  static const tokenPack30 = 'token_pack_30';
-  static const tokenPack100 = 'token_pack_100';
+  static const premiumPlus = 'premium_plus';
+  static const premiumPro = 'premium_pro';
+  static const premiumPlusMonthly = 'premium_plus_monthly';
+  static const premiumProMonthly = 'premium_pro_monthly';
+  static const pdfCredits5 = 'pdf_credits_5';
 
-  static const subscriptions = {premiumSilver, premiumGold, premiumDiamond};
-  static const consumables = {tokenPack10, tokenPack30, tokenPack100};
+  static const subscriptions = {premiumPlus, premiumPro, premiumPlusMonthly, premiumProMonthly};
+  static const consumables = {pdfCredits5};
   static const all = {...subscriptions, ...consumables};
 
-  static int tokensForProduct(String id) => switch (id) {
-    tokenPack10 => 10,
-    tokenPack30 => 30,
-    tokenPack100 => 100,
+  /// Plan ismi
+  static String nameOf(String id) => switch (id) {
+    premiumPlus || premiumPlusMonthly => 'FinalAI Plus',
+    premiumPro || premiumProMonthly => 'FinalAI Pro',
+    pdfCredits5 => '5 PDF Hakki',
+    _ => '',
+  };
+
+  /// PDF hakki miktari
+  static int pdfCreditsFor(String id) => switch (id) {
+    pdfCredits5 => 5,
     _ => 0,
   };
 }
@@ -87,14 +93,12 @@ class PurchaseService {
       return false;
     }
 
-    final isSubscription = ProductIds.subscriptions.contains(productId);
     final param = PurchaseParam(productDetails: product);
-
     try {
-      if (isSubscription) {
-        return await _iap.buyNonConsumable(purchaseParam: param);
-      } else {
+      if (ProductIds.consumables.contains(productId)) {
         return await _iap.buyConsumable(purchaseParam: param);
+      } else {
+        return await _iap.buyNonConsumable(purchaseParam: param);
       }
     } catch (e) {
       debugPrint('PurchaseService: Buy error: $e');

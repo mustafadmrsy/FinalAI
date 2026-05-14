@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../learning_path/widgets/tasks/task_helpers.dart';
 import '../models/user_stats_model.dart';
+import '../../../core/services/game_engine_service.dart';
 
 // ═══════════════════════════════════════════════════════════════
 //  XP / LEVEL POPUP — Pixel game art style
@@ -46,9 +47,10 @@ class _XpLevelPopupState extends State<XpLevelPopup> with SingleTickerProviderSt
     final px = Px.of(context);
     final s = widget.stats;
     final xp = s.xpTotal;
-    final level = (xp / 500).floor() + 1;
-    final xpInLevel = xp % 500;
-    final pct = (xpInLevel / 500).clamp(0.0, 1.0);
+    final level = GameEngineService.levelFromXp(xp);
+    final xpInLevel = GameEngineService.xpInCurrentLevel(xp);
+    final xpRequired = GameEngineService.xpRequiredForCurrentLevel(xp);
+    final pct = xpRequired > 0 ? (xpInLevel / xpRequired).clamp(0.0, 1.0) : 0.0;
 
     return ScaleTransition(
       scale: _scale,
@@ -111,7 +113,7 @@ class _XpLevelPopupState extends State<XpLevelPopup> with SingleTickerProviderSt
                     Row(children: [
                       const Icon(PxIcons.xpIcon, color: PxIcons.xpColor, size: 16),
                       const SizedBox(width: 4),
-                      Text('$xpInLevel / 500 XP', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: px.text)),
+                      Text('$xpInLevel / $xpRequired XP', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: px.text)),
                     ]),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -157,11 +159,14 @@ class _XpLevelPopupState extends State<XpLevelPopup> with SingleTickerProviderSt
 
               // Game stat tiles
               Row(children: [
-                Expanded(child: _gameTile(px, Icons.auto_awesome_rounded, PxIcons.xpColor, 'Toplam', '$xp')),
+                Expanded(child: _gameTile(px, Icons.auto_awesome_rounded, PxIcons.xpColor, 'Toplam', GameEngineService.formatXp(xp))),
                 const SizedBox(width: 8),
                 Expanded(child: _gameTile(px, Icons.today_rounded, PxDecor.green, 'Bugun', '${s.xpToday}')),
                 const SizedBox(width: 8),
-                Expanded(child: _gameTile(px, PxIcons.energyIcon, PxIcons.energyColor, 'Enerji', '${s.energy}')),
+                Expanded(child: Builder(builder: (_) {
+                  final ePct = s.energyMax > 0 ? (s.energy / s.energyMax).clamp(0.0, 1.0) : 0.0;
+                  return _gameTile(px, PxIcons.energyIconByPct(ePct), PxIcons.energyColorByPct(ePct), 'Enerji', '${s.energy}');
+                })),
               ]),
               const SizedBox(height: 14),
 

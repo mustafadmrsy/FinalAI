@@ -5,8 +5,8 @@ import '../../../core/services/haptic_service.dart';
 import '../../../core/services/purchase_service.dart';
 
 // ═══════════════════════════════════════════════════════════════
-//  PREMIUM SCREEN — 2D Pixel Game Art Style
-//  3 tiers: Gumus (Silver), Altin (Gold), Elmas (Diamond)
+//  PREMIUM SCREEN — Modern Subscription UI (2D Pixel Style)
+//  Tier select + Monthly/Yearly toggle
 // ═══════════════════════════════════════════════════════════════
 
 class PremiumScreen extends StatefulWidget {
@@ -17,259 +17,303 @@ class PremiumScreen extends StatefulWidget {
 }
 
 class _PremiumScreenState extends State<PremiumScreen> {
-  int _selectedTier = 1; // 0=silver, 1=gold, 2=diamond
+  int _selectedTier = 0; // 0=plus, 1=pro
+  bool _isYearly = true; // default yearly (best value)
+
+  static const _tiers = [
+    _Tier(
+      name: 'Plus',
+      icon: Icons.bolt_rounded,
+      monthly: '79.99',
+      yearly: '479.99',
+      yearlyMonthly: '40.00',
+      features: [
+        _Feat(Icons.block_rounded, 'Reklamsiz deneyim'),
+        _Feat(Icons.bolt_rounded, '60 enerji / gun'),
+        _Feat(Icons.picture_as_pdf_rounded, '5 PDF / gun'),
+        _Feat(Icons.ac_unit_rounded, '2 seri dondurma / ay'),
+        _Feat(Icons.psychology_rounded, 'Gelismis AI planlama'),
+        _Feat(Icons.school_rounded, '15 AI ders / gun'),
+      ],
+    ),
+    _Tier(
+      name: 'Pro',
+      icon: Icons.diamond_rounded,
+      monthly: '149.99',
+      yearly: '899.99',
+      yearlyMonthly: '75.00',
+      features: [
+        _Feat(Icons.block_rounded, 'Reklamsiz deneyim'),
+        _Feat(Icons.all_inclusive_rounded, 'Sinirsiz enerji'),
+        _Feat(Icons.picture_as_pdf_rounded, 'Sinirsiz PDF'),
+        _Feat(Icons.ac_unit_rounded, 'Sinirsiz seri dondurma'),
+        _Feat(Icons.auto_awesome_rounded, 'Gelismis+ AI planlama'),
+        _Feat(Icons.speed_rounded, 'Oncelikli AI isleme'),
+        _Feat(Icons.school_rounded, 'Sinirsiz AI ders'),
+      ],
+    ),
+  ];
+
+  String get _displayPrice {
+    final t = _tiers[_selectedTier];
+    return _isYearly ? t.yearly : t.monthly;
+  }
+
+  String get _period => _isYearly ? 'yil' : 'ay';
+
+  Color get _accent => _selectedTier == 0 ? PxDecor.blue : PxDecor.gold;
+  Color get _accentDark => _selectedTier == 0 ? PxDecor.blueDark : PxDecor.goldDark;
 
   @override
   Widget build(BuildContext context) {
     final px = Px.of(context);
+    final tier = _tiers[_selectedTier];
 
     return Scaffold(
       backgroundColor: px.bg,
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          children: [
-            // ── Header ──
-            Row(children: [
+        child: Column(children: [
+          // ── Top bar ──
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            child: Row(children: [
               GestureDetector(
                 onTap: () => Navigator.of(context).maybePop(),
                 child: Container(
                   width: 40, height: 40,
                   decoration: BoxDecoration(color: px.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: px.border, width: 2), boxShadow: [BoxShadow(color: px.shadow, offset: const Offset(0, 3), blurRadius: 0)]),
-                  child: Icon(Icons.arrow_back_ios_new_rounded, size: 16, color: px.textMuted),
+                  child: Icon(Icons.close_rounded, size: 18, color: px.textMuted),
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(child: Text('Premium', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22, color: px.text))),
-            ]),
-            const SizedBox(height: 20),
-
-            // ── Hero card ──
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFF1A2E4A), Color(0xFF0D1B2A)]),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: PxDecor.gold, width: 3),
-                boxShadow: [BoxShadow(color: PxDecor.goldDark, offset: const Offset(0, 6), blurRadius: 0)],
+              const Spacer(),
+              GestureDetector(
+                onTap: () { Haptic.light(); PurchaseService.instance.restorePurchases(); },
+                child: Text('Geri Yukle', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: _accent)),
               ),
-              child: Column(children: [
-                Container(
-                  width: 80, height: 80,
-                  decoration: BoxDecoration(
-                    color: PxDecor.goldDark,
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: PxDecor.gold, width: 3),
-                    boxShadow: [BoxShadow(color: Colors.black.withAlpha(40), offset: const Offset(0, 4), blurRadius: 0)],
-                  ),
-                  child: Stack(children: [
-                    Positioned(top: 4, left: 4, child: Container(width: 18, height: 8, decoration: BoxDecoration(color: Colors.white.withAlpha(30), borderRadius: BorderRadius.circular(4)))),
-                    const Center(child: Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 40)),
-                  ]),
-                ),
-                const SizedBox(height: 14),
-                const Text('FinalAI Premium', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 24)),
-                const SizedBox(height: 6),
-                Text('Ogrenme macerani ust seviyeye tasi!', style: TextStyle(color: Colors.white.withAlpha(180), fontWeight: FontWeight.w600, fontSize: 14)),
-              ]),
-            ),
-            const SizedBox(height: 24),
-
-            // ── Tier selector ──
-            Text('Plan Sec', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: px.text)),
-            const SizedBox(height: 14),
-
-            Row(children: [
-              Expanded(child: _tierTab(px, 0, 'Gumus', Icons.shield_rounded, const Color(0xFFA0AEC0), const Color(0xFF718096))),
-              const SizedBox(width: 8),
-              Expanded(child: _tierTab(px, 1, 'Altin', Icons.workspace_premium_rounded, PxDecor.gold, PxDecor.goldDark)),
-              const SizedBox(width: 8),
-              Expanded(child: _tierTab(px, 2, 'Elmas', Icons.diamond_rounded, const Color(0xFF63B3ED), const Color(0xFF3182CE))),
             ]),
-            const SizedBox(height: 20),
-
-            // ── Tier detail card ──
-            _buildTierCard(px),
-            const SizedBox(height: 20),
-
-            // ── Features comparison ──
-            Text('Ozellikler', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: px.text)),
-            const SizedBox(height: 14),
-
-            _featureRow(px, Icons.upload_file_rounded, PxDecor.green, 'PDF Yukleme', _featureValue(0), _featureValue(1), _featureValue(2), ['3/gun', '10/gun', 'Sinirsiz']),
-            const SizedBox(height: 8),
-            _featureRow(px, Icons.bolt_rounded, PxDecor.orange, 'Enerji', _featureValue(0), _featureValue(1), _featureValue(2), ['30', '60', '100']),
-            const SizedBox(height: 8),
-            _featureRow(px, Icons.ac_unit_rounded, PxDecor.teal, 'Seri Dondurma', _featureValue(0), _featureValue(1), _featureValue(2), ['1/ay', '3/ay', 'Sinirsiz']),
-            const SizedBox(height: 8),
-            _featureRow(px, Icons.psychology_rounded, PxDecor.blue, 'AI Planlama', _featureValue(0), _featureValue(1), _featureValue(2), ['Temel', 'Gelismis', 'Gelismis+']),
-            const SizedBox(height: 8),
-            _featureRow(px, Icons.auto_awesome_rounded, PxDecor.purple, 'Quiz Modu', _featureValue(0), _featureValue(1), _featureValue(2), ['Temel', 'Gelismis', 'Gelismis+']),
-            const SizedBox(height: 8),
-            _featureRow(px, Icons.speed_rounded, PxDecor.orange, 'AI Hizi', _featureValue(0), _featureValue(1), _featureValue(2), ['Normal', 'Oncelikli', 'Aninda']),
-            const SizedBox(height: 8),
-            _featureRow(px, Icons.support_agent_rounded, PxDecor.gold, 'Destek', _featureValue(0), _featureValue(1), _featureValue(2), ['Standart', 'Oncelikli', 'VIP']),
-            const SizedBox(height: 24),
-
-            // ── Purchase button ──
-            _buildPurchaseButton(px),
-            const SizedBox(height: 12),
-
-            // ── Restore ──
-            Center(child: GestureDetector(
-              onTap: () { Haptic.light(); PurchaseService.instance.restorePurchases(); },
-              child: Text('Satin alimi geri yukle', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: px.textMuted, decoration: TextDecoration.underline)),
-            )),
-            const SizedBox(height: 24),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _tierTab(Px px, int index, String label, IconData icon, Color color, Color dark) {
-    final selected = _selectedTier == index;
-    return GestureDetector(
-      onTap: () { Haptic.selection(); setState(() => _selectedTier = index); },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: selected ? color : px.card,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: selected ? dark : px.border, width: selected ? 3 : 2),
-          boxShadow: [BoxShadow(color: selected ? dark : px.shadow, offset: const Offset(0, 3), blurRadius: 0)],
-        ),
-        child: Column(children: [
-          Container(
-            width: 36, height: 36,
-            decoration: BoxDecoration(
-              color: selected ? dark : px.surface,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: selected ? Colors.white.withAlpha(40) : px.border, width: 2),
-            ),
-            child: Icon(icon, color: selected ? Colors.white : color, size: 18),
           ),
-          const SizedBox(height: 6),
-          Text(label, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: selected ? Colors.white : px.text)),
+
+          // ── Scrollable content ──
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              children: [
+                const SizedBox(height: 8),
+                // ── Icon + Title ──
+                Center(child: Container(
+                  width: 72, height: 72,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: [_accent, _accentDark], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: _accentDark, width: 3),
+                    boxShadow: [BoxShadow(color: _accentDark, offset: const Offset(0, 4), blurRadius: 0)],
+                  ),
+                  child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 36),
+                )),
+                const SizedBox(height: 16),
+                Center(child: Text('FinalAI Premium', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 24, color: px.text))),
+                const SizedBox(height: 4),
+                Center(child: Text('Tum sinirlari kaldir, tam gucle ogren!', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: px.textMuted))),
+                const SizedBox(height: 24),
+
+                // ── Monthly / Yearly toggle ──
+                _buildPeriodToggle(px),
+                const SizedBox(height: 20),
+
+                // ── Plan cards ──
+                Row(children: [
+                  Expanded(child: _buildPlanCard(px, 0, tier)),
+                  const SizedBox(width: 10),
+                  Expanded(child: _buildPlanCard(px, 1, tier)),
+                ]),
+                const SizedBox(height: 20),
+
+                // ── Features ──
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: px.card,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: _accent.withAlpha(60), width: 2),
+                    boxShadow: [BoxShadow(color: px.shadow, offset: const Offset(0, 3), blurRadius: 0)],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${tier.name} icerikleri', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: px.text)),
+                      const SizedBox(height: 12),
+                      for (final f in tier.features)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Row(children: [
+                            Container(
+                              width: 28, height: 28,
+                              decoration: BoxDecoration(color: _accent.withAlpha(30), borderRadius: BorderRadius.circular(8)),
+                              child: Icon(f.icon, color: _accent, size: 16),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(child: Text(f.label, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: px.text))),
+                            Icon(Icons.check_circle_rounded, color: _accent, size: 18),
+                          ]),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // ── Legal ──
+                Center(child: Text('Abonelik otomatik yenilenir. Istedigin zaman iptal edebilirsin.', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 11, color: px.textMuted))),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+
+          // ── Sticky purchase button ──
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+            child: _buildPurchaseButton(px),
+          ),
         ]),
       ),
     );
   }
 
-  Widget _buildTierCard(Px px) {
-    final tiers = [
-      _TierData('Gumus', Icons.shield_rounded, const Color(0xFFA0AEC0), const Color(0xFF718096), '29.99', 'Aylik', ['3 PDF/gun', '30 enerji', '1 freeze/ay', 'Temel AI planlama']),
-      _TierData('Altin', Icons.workspace_premium_rounded, PxDecor.gold, PxDecor.goldDark, '49.99', 'Aylik', ['10 PDF/gun', '60 enerji', '3 freeze/ay', 'Gelismis AI planlama', 'Oncelikli AI isleme']),
-      _TierData('Elmas', Icons.diamond_rounded, const Color(0xFF63B3ED), const Color(0xFF3182CE), '79.99', 'Aylik', ['Sinirsiz PDF', '100 enerji', 'Sinirsiz freeze', 'Gelismis+ AI planlama', 'Aninda AI isleme', 'VIP destek']),
-    ];
-    final tier = tiers[_selectedTier];
-
+  // ── Period toggle (Monthly / Yearly) ──
+  Widget _buildPeriodToggle(Px px) {
     return Container(
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: px.card,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: tier.color, width: 3),
-        boxShadow: [BoxShadow(color: tier.dark, offset: const Offset(0, 5), blurRadius: 0)],
-      ),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        // Header
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          decoration: BoxDecoration(
-            color: tier.color,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(17)),
-            boxShadow: [BoxShadow(color: tier.dark, offset: const Offset(0, 3), blurRadius: 0)],
-          ),
-          child: Column(children: [
-            Icon(tier.icon, color: Colors.white, size: 32),
-            const SizedBox(height: 8),
-            Text('${tier.name} Plan', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 20)),
-            const SizedBox(height: 4),
-            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Text('₺${tier.price}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 28)),
-              Text(' / ${tier.period}', style: TextStyle(color: Colors.white.withAlpha(180), fontWeight: FontWeight.w600, fontSize: 14)),
-            ]),
-          ]),
-        ),
-        // Features
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(children: [
-            for (final f in tier.features) ...[
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 5),
-                child: Row(children: [
-                  Container(
-                    width: 24, height: 24,
-                    decoration: BoxDecoration(color: tier.color, borderRadius: BorderRadius.circular(7)),
-                    child: const Icon(Icons.check_rounded, color: Colors.white, size: 14),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(child: Text(f, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: px.text))),
-                ]),
-              ),
-            ],
-          ]),
-        ),
-      ]),
-    );
-  }
-
-  String _featureValue(int tier) {
-    // Placeholder — values are passed in the row
-    return '';
-  }
-
-  Widget _featureRow(Px px, IconData icon, Color color, String title, String s, String g, String d, List<String> values) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: _selectedTier >= 0 ? px.accentBg(color) : px.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color, width: 2),
-        boxShadow: [BoxShadow(color: color.withAlpha(px.isDark ? 15 : 30), offset: const Offset(0, 2), blurRadius: 0)],
+        border: Border.all(color: px.border, width: 2),
+        boxShadow: [BoxShadow(color: px.shadow, offset: const Offset(0, 3), blurRadius: 0)],
       ),
       child: Row(children: [
-        Container(
-          width: 36, height: 36,
-          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10), boxShadow: [BoxShadow(color: color.withAlpha(80), offset: const Offset(0, 2), blurRadius: 0)]),
-          child: Stack(children: [
-            Positioned(top: 3, left: 3, child: Container(width: 8, height: 4, decoration: BoxDecoration(color: Colors.white.withAlpha(40), borderRadius: BorderRadius.circular(2)))),
-            Center(child: Icon(icon, color: Colors.white, size: 18)),
-          ]),
-        ),
-        const SizedBox(width: 10),
-        Expanded(child: Text(title, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: px.text))),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(values[_selectedTier], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11)),
-        ),
+        Expanded(child: _toggleBtn(px, false, 'Aylik')),
+        Expanded(child: _toggleBtn(px, true, 'Yillik')),
       ]),
     );
   }
 
+  Widget _toggleBtn(Px px, bool yearly, String label) {
+    final selected = _isYearly == yearly;
+    return GestureDetector(
+      onTap: () { Haptic.selection(); setState(() => _isYearly = yearly); },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: selected ? _accent : Colors.transparent,
+          borderRadius: BorderRadius.circular(11),
+          boxShadow: selected ? [BoxShadow(color: _accentDark, offset: const Offset(0, 3), blurRadius: 0)] : null,
+        ),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Text(label, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: selected ? Colors.white : px.textMuted)),
+          if (yearly) ...[
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: selected ? Colors.white.withAlpha(30) : PxDecor.green.withAlpha(30),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text('%50', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: selected ? Colors.white : PxDecor.green)),
+            ),
+          ],
+        ]),
+      ),
+    );
+  }
+
+  // ── Plan card ──
+  Widget _buildPlanCard(Px px, int index, _Tier currentTier) {
+    final t = _tiers[index];
+    final selected = _selectedTier == index;
+    final color = index == 0 ? PxDecor.blue : PxDecor.gold;
+    final dark = index == 0 ? PxDecor.blueDark : PxDecor.goldDark;
+    final price = _isYearly ? t.yearlyMonthly : t.monthly;
+
+    return GestureDetector(
+      onTap: () { Haptic.selection(); setState(() => _selectedTier = index); },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: selected ? color : px.card,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: selected ? dark : px.border, width: selected ? 3 : 2),
+          boxShadow: [BoxShadow(color: selected ? dark : px.shadow, offset: const Offset(0, 4), blurRadius: 0)],
+        ),
+        child: Column(children: [
+          // Badge
+          if (index == 1) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(color: selected ? Colors.white.withAlpha(30) : PxDecor.gold.withAlpha(30), borderRadius: BorderRadius.circular(6)),
+              child: Text('EN POPULER', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 9, color: selected ? Colors.white : PxDecor.gold, letterSpacing: 0.5)),
+            ),
+            const SizedBox(height: 6),
+          ] else
+            const SizedBox(height: 22),
+
+          // Icon
+          Container(
+            width: 44, height: 44,
+            decoration: BoxDecoration(
+              color: selected ? dark : px.surface,
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(color: selected ? Colors.white.withAlpha(30) : px.border, width: 2),
+            ),
+            child: Icon(t.icon, color: selected ? Colors.white : color, size: 22),
+          ),
+          const SizedBox(height: 10),
+          Text(t.name, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: selected ? Colors.white : px.text)),
+          const SizedBox(height: 6),
+
+          // Price
+          RichText(text: TextSpan(children: [
+            TextSpan(text: '₺$price', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22, color: selected ? Colors.white : px.text)),
+            TextSpan(text: '/ay', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: selected ? Colors.white.withAlpha(180) : px.textMuted)),
+          ])),
+
+          if (_isYearly) ...[
+            const SizedBox(height: 4),
+            Text('₺${t.yearly}/yil', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 11, color: selected ? Colors.white.withAlpha(160) : px.textMuted)),
+          ],
+
+          const SizedBox(height: 8),
+          // Radio indicator
+          Container(
+            width: 22, height: 22,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: selected ? Colors.white : px.surface,
+              border: Border.all(color: selected ? dark : px.border, width: 2),
+            ),
+            child: selected ? Center(child: Container(width: 10, height: 10, decoration: BoxDecoration(shape: BoxShape.circle, color: color))) : null,
+          ),
+        ]),
+      ),
+    );
+  }
+
+  // ── Purchase button ──
   Widget _buildPurchaseButton(Px px) {
-    final colors = [const Color(0xFFA0AEC0), PxDecor.gold, const Color(0xFF63B3ED)];
-    final darks = [const Color(0xFF718096), PxDecor.goldDark, const Color(0xFF3182CE)];
-    final labels = ['Gumus\'e Abone Ol', 'Altin\'a Abone Ol', 'Elmas\'a Abone Ol'];
-    final prices = ['₺29.99/ay', '₺49.99/ay', '₺79.99/ay'];
+    final productId = _isYearly
+        ? (_selectedTier == 0 ? ProductIds.premiumPlus : ProductIds.premiumPro)
+        : (_selectedTier == 0 ? ProductIds.premiumPlusMonthly : ProductIds.premiumProMonthly);
+    final tier = _tiers[_selectedTier];
+    final label = '${tier.name}\'a Abone Ol';
 
     return GestureDetector(
       onTap: () async {
         Haptic.medium();
-        final productIds = [ProductIds.premiumSilver, ProductIds.premiumGold, ProductIds.premiumDiamond];
-        final ok = await PurchaseService.instance.buy(productIds[_selectedTier]);
+        final ok = await PurchaseService.instance.buy(productId);
         if (!ok && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: const Text('Satin alma baslatilamadi. Lutfen tekrar deneyin.', style: TextStyle(fontWeight: FontWeight.w700)),
-              backgroundColor: colors[_selectedTier],
+              backgroundColor: _accent,
             ),
           );
         }
@@ -278,25 +322,31 @@ class _PremiumScreenState extends State<PremiumScreen> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: colors[_selectedTier],
+          color: _accent,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: darks[_selectedTier], width: 3),
-          boxShadow: [BoxShadow(color: darks[_selectedTier], offset: const Offset(0, 5), blurRadius: 0)],
+          border: Border.all(color: _accentDark, width: 3),
+          boxShadow: [BoxShadow(color: _accentDark, offset: const Offset(0, 5), blurRadius: 0)],
         ),
         child: Column(children: [
-          Text(labels[_selectedTier], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 17)),
+          Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 17)),
           const SizedBox(height: 2),
-          Text(prices[_selectedTier], style: TextStyle(color: Colors.white.withAlpha(200), fontWeight: FontWeight.w700, fontSize: 13)),
+          Text('₺$_displayPrice / $_period', style: TextStyle(color: Colors.white.withAlpha(200), fontWeight: FontWeight.w700, fontSize: 13)),
         ]),
       ),
     );
   }
 }
 
-class _TierData {
-  const _TierData(this.name, this.icon, this.color, this.dark, this.price, this.period, this.features);
-  final String name, price, period;
+// ── Data classes ──
+class _Tier {
+  const _Tier({required this.name, required this.icon, required this.monthly, required this.yearly, required this.yearlyMonthly, required this.features});
+  final String name, monthly, yearly, yearlyMonthly;
   final IconData icon;
-  final Color color, dark;
-  final List<String> features;
+  final List<_Feat> features;
+}
+
+class _Feat {
+  const _Feat(this.icon, this.label);
+  final IconData icon;
+  final String label;
 }

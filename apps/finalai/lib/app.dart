@@ -96,8 +96,8 @@ class _FinalAIAppState extends ConsumerState<FinalAIApp> with WidgetsBindingObse
     purchase.onConsumablePurchased = (productId) async {
       try {
         final repo = ref.read(userStatsRepositoryProvider);
-        final tokens = ProductIds.tokensForProduct(productId);
-        if (tokens > 0) await repo.rewardAiTokens(amount: tokens);
+        final credits = ProductIds.pdfCreditsFor(productId);
+        if (credits > 0) await repo.rewardPdfCredit(amount: credits);
         ref.invalidate(userStatsProvider);
       } catch (_) {}
     };

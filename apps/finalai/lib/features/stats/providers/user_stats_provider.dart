@@ -357,14 +357,14 @@ class UserStatsRepository {
     return true;
   }
 
-  /// Reklam izleme odulu: +1 PDF kredi
-  Future<void> rewardPdfCredit() async {
+  /// PDF kredi ekle (reklam odulu veya satin alma)
+  Future<void> rewardPdfCredit({int amount = 1}) async {
     final userId = _requireUserId();
     final stats = await getUserStats();
     if (stats == null) return;
 
     await _client.from('user_stats').update({
-      'pdf_credits': stats.pdfCredits + 1,
+      'pdf_credits': stats.pdfCredits + amount,
       'updated_at': DateTime.now().toIso8601String(),
     }).eq('user_id', userId);
   }

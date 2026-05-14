@@ -9,9 +9,64 @@
 
 class GameEngineService {
   /// XP ödülleri
-  static const int baseXpPerLesson = 10;
+  static const int baseXpPerLesson = 15;
+  static const int perfectBonus = 10;
   static const int comboMultiplier = 2; // 2x XP combo'daysanız
   static const int comboThreshold = 3; // 3 ders = combo başlat
+
+  /// ── Level sistemi ───────────────────────────────────────
+  /// Seviye 1-5:   100 XP / seviye  (hızlı başlangıç)
+  /// Seviye 6-10:  200 XP / seviye
+  /// Seviye 11-20: 300 XP / seviye
+  /// Seviye 21+:   500 XP / seviye
+  static int xpForLevel(int level) {
+    if (level <= 5) return 100;
+    if (level <= 10) return 200;
+    if (level <= 20) return 300;
+    return 500;
+  }
+
+  /// Toplam XP'den seviye hesapla
+  static int levelFromXp(int totalXp) {
+    int level = 1;
+    int remaining = totalXp;
+    while (remaining >= xpForLevel(level)) {
+      remaining -= xpForLevel(level);
+      level++;
+    }
+    return level;
+  }
+
+  /// Mevcut seviyedeki ilerleme XP'si
+  static int xpInCurrentLevel(int totalXp) {
+    int level = 1;
+    int remaining = totalXp;
+    while (remaining >= xpForLevel(level)) {
+      remaining -= xpForLevel(level);
+      level++;
+    }
+    return remaining;
+  }
+
+  /// Mevcut seviyede gereken toplam XP
+  static int xpRequiredForCurrentLevel(int totalXp) {
+    return xpForLevel(levelFromXp(totalXp));
+  }
+
+  /// XP sayısını kısa formatta göster (1234 → "1.2K")
+  static String formatXp(int xp) {
+    if (xp < 1000) return '$xp';
+    if (xp < 10000) {
+      final k = xp / 1000;
+      return '${k.toStringAsFixed(1)}K';
+    }
+    if (xp < 100000) {
+      final k = (xp / 1000).floor();
+      return '${k}K';
+    }
+    final k = (xp / 1000).floor();
+    return '${k}K';
+  }
 
   /// Energy değerleri
   static const int energyMaxDefault = 30;

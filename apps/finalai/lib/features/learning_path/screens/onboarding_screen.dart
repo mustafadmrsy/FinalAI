@@ -2,7 +2,9 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/services/foreground_service.dart';
 import '../providers/learning_path_providers.dart';
+import '../../notifications/services/notification_service.dart';
 import '../widgets/steps/subject_select_step.dart';
 import '../widgets/steps/difficulty_select_step.dart';
 import '../widgets/steps/placement_step.dart';
@@ -25,6 +27,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
   String _placementLevel = 'Orta';
   int _placementScore = 0;
   bool _saving = false;
+  bool _planReady = false;
+  bool _onboardingSaved = false;
 
   static const _totalSteps = 4;
   static const _stepTitles = [
@@ -44,31 +48,72 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
     if (_subject == null) return;
 
     setState(() => _saving = true);
-    Object? error;
+
+    // Foreground service baslatarak Android'in arka planda process'i oldur/agi kesmesini engelle
+    await ForegroundService.start(
+      title: '$_subject plani hazirlaniyor...',
+      body: 'AI ders planiniz olusturuluyor',
+    );
+
     try {
       final repo = ref.read(learningPathRepositoryProvider);
-      await repo.saveOnboarding(subject: _subject!, difficulty: _placementLevel);
+
+      if (!_onboardingSaved) {
+        debugPrint('[Onboarding] saveOnboarding...');
+        await repo.saveOnboarding(subject: _subject!, difficulty: _placementLevel);
+        _onboardingSaved = true;
+        debugPrint('[Onboarding] saveOnboarding done');
+      }
+
+      try { await NotificationService.showPlanProgress(percent: 0, subject: _subject!); } catch (_) {}
+      debugPrint('[Onboarding] generateAndSaveInitialPlan starting...');
+
       await repo.generateAndSaveInitialPlan(
         subject: _subject!,
         difficulty: _placementLevel,
         goal: _goal ?? '',
         dailyMinutes: _dailyMinutes,
+        onProgress: (percent) {
+          try { NotificationService.showPlanProgress(percent: percent, subject: _subject!); } catch (_) {}
+        },
       );
+
+      // ── Success ──
+      debugPrint('[Onboarding] Plan saved successfully!');
+      try { await NotificationService.cancelPlanProgress(); } catch (_) {}
+
+      // Foreground service'i durdur
+      await ForegroundService.stop();
+
+      // Bildirim gonder — kullanici arka plandaysa bunu gorur
+      try { await NotificationService.notifyPlanReady(subject: _subject!); } catch (_) {}
+
+      // Provider'lari invalidate et — OnboardingGate otomatik dashboard'a gecer
       ref.invalidate(onboardingCompletedProvider);
       ref.invalidate(learningUnitsProvider);
-    } catch (e) {
-      error = e;
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
 
-    if (error != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('AI ders planı oluşturulamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.'),
-          duration: Duration(seconds: 5),
-        ),
-      );
+      if (mounted) {
+        setState(() { _saving = false; _planReady = true; });
+        // Kutlama ekranini 3sn goster, sonra provider tekrar invalidate
+        await Future.delayed(const Duration(seconds: 3));
+        if (mounted) ref.invalidate(onboardingCompletedProvider);
+      }
+      return;
+
+    } catch (e, st) {
+      debugPrint('[Onboarding] Plan creation failed: $e');
+      debugPrint('[Onboarding] Stack: $st');
+      await ForegroundService.stop();
+      try { await NotificationService.cancelPlanProgress(); } catch (_) {}
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('AI ders planı oluşturulamadı. Lütfen tekrar deneyin.'),
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
     }
   }
 
@@ -185,6 +230,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                           placementLevel: _placementLevel,
                           placementScore: _placementScore,
                           isSaving: _saving,
+                          isPlanReady: _planReady,
                           onCreatePlan: () => _createPlan(context),
                         ),
                     },

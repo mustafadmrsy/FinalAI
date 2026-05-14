@@ -115,18 +115,45 @@ CustomTransitionPage<void> _pxPage(Widget child) {
   );
 }
 
-class OnboardingGate extends ConsumerWidget {
+class OnboardingGate extends ConsumerStatefulWidget {
   const OnboardingGate({super.key, required this.child});
 
   final Widget child;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<OnboardingGate> createState() => _OnboardingGateState();
+}
+
+class _OnboardingGateState extends ConsumerState<OnboardingGate>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Arka plandan donunce DB'yi tekrar kontrol et —
+      // plan arka planda tamamlanmis olabilir
+      ref.invalidate(onboardingCompletedProvider);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final onboarded = ref.watch(onboardingCompletedProvider);
     return onboarded.when(
       loading: () => const PixelLoadingScreen(message: 'Yukleniyor...'),
       error: (_, __) => const OnboardingScreen(),
-      data: (done) => done ? child : const OnboardingScreen(),
+      data: (done) => done ? widget.child : const OnboardingScreen(),
     );
   }
 }

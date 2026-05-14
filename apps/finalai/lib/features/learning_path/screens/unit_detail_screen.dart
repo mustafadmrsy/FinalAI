@@ -6,6 +6,8 @@ import '../widgets/zigzag_path_list.dart';
 import '../widgets/duo_circle_node.dart';
 import '../providers/learning_path_providers.dart';
 import '../../stats/providers/user_stats_provider.dart';
+import '../../stats/widgets/xp_level_popup.dart';
+import '../../stats/widgets/hero_xp_card.dart';
 import '../widgets/tasks/task_helpers.dart';
 import '../../../core/services/haptic_service.dart';
 import '../../shop/widgets/quota_popup.dart';
@@ -44,9 +46,12 @@ class UnitDetailScreen extends ConsumerWidget {
               const SizedBox(width: 12),
               Expanded(child: Text('Unite $unitIndex', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: px.text))),
               statsAsync.when(
-                loading: () => const SizedBox(width: 64, height: 24, child: Center(child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)))),
-                error: (_, __) => _pxBadge(px, PxIcons.energyIcon, PxIcons.energyColor, '0'),
-                data: (s) => _pxBadge(px, PxIcons.energyIcon, PxIcons.energyColor, '${s?.energy ?? 0}'),
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+                data: (s) => s == null ? const SizedBox.shrink() : GreenXpBadge(
+                  stats: s,
+                  onTap: () { Haptic.light(); XpLevelPopup.show(context, s); },
+                ),
               ),
             ]),
             const SizedBox(height: 16),
@@ -69,7 +74,7 @@ class UnitDetailScreen extends ConsumerWidget {
                         isLocked: lesson.isLocked,
                         onTap: () async {
                           final stats = ref.read(userStatsProvider).valueOrNull;
-                          if (stats != null && stats.energy <= 0 && !stats.isPremium) {
+                          if (stats != null && stats.energy < 3 && !stats.isPremium) {
                             final rewarded = await QuotaPopup.show(context, ref, type: QuotaType.energy);
                             ref.invalidate(userStatsProvider);
                             if (!rewarded || !context.mounted) return;
@@ -89,20 +94,4 @@ class UnitDetailScreen extends ConsumerWidget {
     );
   }
 
-  static Widget _pxBadge(Px px, IconData icon, Color color, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: px.card,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: px.border, width: 2),
-        boxShadow: [BoxShadow(color: px.shadow, offset: const Offset(0, 3), blurRadius: 0)],
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, color: color, size: 16),
-        const SizedBox(width: 4),
-        Text(value, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: px.text)),
-      ]),
-    );
-  }
 }

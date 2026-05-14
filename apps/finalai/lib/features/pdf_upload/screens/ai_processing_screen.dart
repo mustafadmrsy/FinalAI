@@ -8,6 +8,7 @@ import 'package:lottie/lottie.dart';
 
 import '../../../core/ui/app_assets.dart';
 import '../../../core/ui/widgets/app_svg_icon.dart';
+import '../../../core/ui/widgets/pixel_runner_game.dart';
 import '../../home/providers/notes_provider.dart';
 import '../../stats/providers/user_stats_provider.dart';
 import '../providers/upload_provider.dart';
@@ -156,97 +157,63 @@ class _AiProcessingScreenState extends ConsumerState<AiProcessingScreen> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // ─── MASCOT ANIMATION ───
-                    Container(
-                      width: 200,
-                      height: 200,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withAlpha((0.08 * 255).round()),
-                        borderRadius: BorderRadius.circular(100),
-                        border: Border.all(color: AppColors.primary.withAlpha((0.2 * 255).round()), width: 3),
-                      ),
-                      child: ClipOval(
-                        child: Center(
-                          child: Transform.scale(
-                            scale: 1.45,
-                            child: Align(
-                              alignment: Alignment.center,
-                              widthFactor: 0.62,
-                              heightFactor: 0.62,
-                              child: Lottie.asset(
-                                AppAssets.mascotCuteCupReading,
-                                fit: BoxFit.contain,
-                                repeat: true,
-                              ),
-                            ),
-                          ),
+                    const SizedBox(height: AppSpacing.md),
+
+                    // ─── COMPACT STATUS HEADER ───
+                    Row(children: [
+                      Container(
+                        width: 56, height: 56,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.primary.withAlpha((0.08 * 255).round()),
+                          border: Border.all(color: AppColors.primary.withAlpha((0.2 * 255).round()), width: 2),
                         ),
+                        child: ClipOval(child: Lottie.asset(AppAssets.mascotCuteCupReading, fit: BoxFit.contain, repeat: true)),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(
+                          state.message.isEmpty ? _getStatusEmoji(progress) : state.message,
+                          style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700),
+                          maxLines: 2, overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Row(children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(color: AppColors.primary, borderRadius: AppRadius.full),
+                            child: Text('%$progressPercent', style: AppTypography.labelMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w800)),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(timeText, style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
+                        ]),
+                      ])),
+                    ]),
+                    const SizedBox(height: AppSpacing.md),
+
+                    // ─── PROGRESS BAR ───
+                    ClipRRect(
+                      borderRadius: AppRadius.full,
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 10,
+                        backgroundColor: AppColors.primary.withAlpha((0.12 * 255).round()),
+                        valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xl),
 
-                    // ─── STATUS MESSAGE ───
-                    Text(
-                      state.message.isEmpty ? _getStatusEmoji(progress) : state.message,
-                      style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700),
-                      textAlign: TextAlign.center,
-                    ),
+                    // ─── MINI GAME ───
+                    Text('Beklerken oyna!', style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w800, color: AppColors.textSecondary)),
+                    const SizedBox(height: 8),
+                    const PixelRunnerGame(),
                     const SizedBox(height: AppSpacing.lg),
-
-                    // ─── PROGRESS BAR (Game-style) ───
-                    Container(
-                      padding: const EdgeInsets.all(AppSpacing.lg),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surface,
-                        borderRadius: AppRadius.xl,
-                        border: Border.all(color: theme.dividerColor),
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text('İlerleme', style: AppTypography.labelMedium.copyWith(fontWeight: FontWeight.w600)),
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primary,
-                                      borderRadius: AppRadius.full,
-                                    ),
-                                    child: Text(
-                                      '%$progressPercent',
-                                      style: AppTypography.labelMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(timeText, style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
-                                ],
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: AppSpacing.md),
-                          ClipRRect(
-                            borderRadius: AppRadius.full,
-                            child: LinearProgressIndicator(
-                              value: progress,
-                              minHeight: 12,
-                              backgroundColor: AppColors.primary.withAlpha((0.12 * 255).round()),
-                              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
 
                     // ─── TIP CARD ───
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(AppSpacing.lg),
+                      padding: const EdgeInsets.all(AppSpacing.md),
                       decoration: BoxDecoration(
                         color: AppColors.warning.withAlpha((0.08 * 255).round()),
                         borderRadius: AppRadius.lg,
@@ -257,7 +224,7 @@ class _AiProcessingScreenState extends ConsumerState<AiProcessingScreen> {
                         child: Text(
                           _tips[_tipIndex],
                           key: ValueKey(_tipIndex),
-                          style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+                          style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.w600),
                           textAlign: TextAlign.center,
                         ),
                       ),
